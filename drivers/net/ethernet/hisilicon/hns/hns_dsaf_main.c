@@ -2666,6 +2666,169 @@ int hns_dsaf_get_regs_count(void)
 	return DSAF_DUMP_REGS_NUM;
 }
 
+static int hns_dsaf_get_port_id(u8 port)
+{
+	if (port < DSAF_SERVICE_NW_NUM)
+		return port;
+
+	if (port >= DSAF_BASE_INNER_PORT_NUM)
+		return port - DSAF_BASE_INNER_PORT_NUM + DSAF_SERVICE_NW_NUM;
+
+	return -EINVAL;
+}
+
+static void set_promisc_tcam_enable(struct dsaf_device *dsaf_dev, u32 port)
+{
+	struct dsaf_tbl_tcam_ucast_cfg tbl_tcam_ucast = {0, 1, 0, 0, 0x80};
+	struct dsaf_tbl_tcam_data tbl_tcam_data_mc = {0x01000000, port};
+	struct dsaf_tbl_tcam_data tbl_tcam_mask_uc = {0x01000000, 0xf};
+	struct dsaf_tbl_tcam_mcast_cfg tbl_tcam_mcast = {0, 0, {0} };
+	struct dsaf_drv_priv *priv = hns_dsaf_dev_priv(dsaf_dev);
+	struct dsaf_tbl_tcam_data tbl_tcam_data_uc = {0, port};
+	struct dsaf_drv_mac_single_dest_entry mask_entry;
+	struct dsaf_drv_tbl_tcam_key temp_key, mask_key;
+	struct dsaf_drv_soft_mac_tbl *soft_mac_entry;
+	u16 entry_index = DSAF_INVALID_ENTRY_IDX;
+	struct dsaf_drv_tbl_tcam_key mac_key;
+	struct hns_mac_cb *mac_cb;
+	u8 addr[ETH_ALEN] = {0};
+	u8 port_num;
+	u16 mskid;
+
+	/* promisc use vague table match with vlanid = 0 & macaddr = 0 */
+	hns_dsaf_set_mac_key(dsaf_dev, &mac_key, 0x00, port, addr);
+	entry_index = hns_dsaf_find_soft_mac_entry(dsaf_dev, &mac_key);
+	if (entry_index != DSAF_INVALID_ENTRY_IDX)
+		return;
+
+	/* put promisc tcam entry in the end. */
+	/* 1. set promisc unicast vague tcam entry. */
+	entry_index = hns_dsaf_find_empty_mac_entry_reverse(dsaf_dev);
+	if (entry_index == DSAF_INVALID_ENTRY_IDX) {
+		dev_err(dsaf_dev->dev,
+			"enable uc promisc failed (port:%#x)\n",
+			port);
+		return;
+	}
+
+	mac_cb = dsaf_dev->mac_cb[port];
+	(void)hns_mac_get_inner_port_num(mac_cb, 0, &port_num);
+	tbl_tcam_ucast.tbl_ucast_out_port = port_num;
+
+	/* config uc vague table */
+	hns_dsaf_tcam_uc_cfg_vague(dsaf_dev, entry_index, &tbl_tcam_data_uc,
+				   &tbl_tcam_mask_uc, &tbl_tcam_ucast);
+
+	/* update software entry */
+	soft_mac_entry = priv->soft_mac_tbl;
+	soft_mac_entry += entry_index;
+	soft_mac_entry->index = entry_index;
+	soft_mac_entry->tcam_key.high.val = mac_key.high.val;
+	soft_mac_entry->tcam_key.low.val = mac_key.low.val;
+	/* step back to the START for mc. */
+	soft_mac_entry = priv->soft_mac_tbl;
+
+	/* 2. set promisc multicast vague tcam entry. */
+	entry_index = hns_dsaf_find_empty_mac_entry_reverse(dsaf_dev);
+	if (entry_index == DSAF_INVALID_ENTRY_IDX) {
+		dev_err(dsaf_dev->dev,
+			"enable mc promisc failed (port:%#x)\n",
+			port);
+		return;
+	}
+
+	memset(&mask_entry, 0x0, sizeof(mask_entry));
+	memset(&mask_key, 0x0, sizeof(mask_key));
+	memset(&temp_key, 0x0, sizeof(temp_key));
+	mask_entry.addr[0] = 0x01;
+	hns_dsaf_set_mac_key(dsaf_dev, &mask_key, mask_entry.in_vlan_id,
+			     0xf, mask_entry.addr);
+	tbl_tcam_mcast.tbl_mcast_item_vld = 1;
+	tbl_tcam_mcast.tbl_mcast_old_en = 0;
+
+	/* set MAC port to handle multicast */
+	mskid = hns_dsaf_get_port_id(port);
+	if (mskid == -EINVAL) {
+		dev_err(dsaf_dev->dev, "%s,pnum(%d)error,key(%#x:%#x)\n",
+			dsaf_dev->ae_dev.name, port,
+			mask_key.high.val, mask_key.low.val);
+		return;
+	}
+	dsaf_set_bit(tbl_tcam_mcast.tbl_mcast_port_msk[mskid / 32],
+		     mskid % 32, 1);
+
+	/* set pool bit map to handle multicast */
+	mskid = hns_dsaf_get_port_id(port_num);
+	if (mskid == -EINVAL) {
+		dev_err(dsaf_dev->dev,
+			"%s, pool bit map pnum(%d)error,key(%#x:%#x)\n",
+			dsaf_dev->ae_dev.name, port_num,
+			mask_key.high.val, mask_key.low.val);
+		return;
+	}
+	dsaf_set_bit(tbl_tcam_mcast.tbl_mcast_port_msk[mskid / 32],
+		     mskid % 32, 1);
+
+	memcpy(&temp_key, &mask_key, sizeof(mask_key));
+	hns_dsaf_tcam_mc_cfg_vague(dsaf_dev, entry_index, &tbl_tcam_data_mc,
+				   (struct dsaf_tbl_tcam_data *)(&mask_key),
+				   &tbl_tcam_mcast);
+
+	/* update software entry */
+	soft_mac_entry += entry_index;
+	soft_mac_entry->index = entry_index;
+	soft_mac_entry->tcam_key.high.val = temp_key.high.val;
+	soft_mac_entry->tcam_key.low.val = temp_key.low.val;
+}
+
+static void set_promisc_tcam_disable(struct dsaf_device *dsaf_dev, u32 port)
+{
+	struct dsaf_tbl_tcam_data tbl_tcam_data_mc = {0x01000000, port};
+	struct dsaf_tbl_tcam_ucast_cfg tbl_tcam_ucast = {0, 0, 0, 0, 0};
+	struct dsaf_tbl_tcam_mcast_cfg tbl_tcam_mcast = {0, 0, {0} };
+	struct dsaf_drv_priv *priv = hns_dsaf_dev_priv(dsaf_dev);
+	struct dsaf_tbl_tcam_data tbl_tcam_data_uc = {0, 0};
+	struct dsaf_tbl_tcam_data tbl_tcam_mask = {0, 0};
+	struct dsaf_drv_soft_mac_tbl *soft_mac_entry;
+	u16 entry_index = DSAF_INVALID_ENTRY_IDX;
+	struct dsaf_drv_tbl_tcam_key mac_key;
+	u8 addr[ETH_ALEN] = {0};
+
+	/* 1. delete uc vague tcam entry. */
+	/* promisc use vague table match with vlanid = 0 & macaddr = 0 */
+	hns_dsaf_set_mac_key(dsaf_dev, &mac_key, 0x00, port, addr);
+	entry_index = hns_dsaf_find_soft_mac_entry(dsaf_dev, &mac_key);
+
+	if (entry_index == DSAF_INVALID_ENTRY_IDX)
+		return;
+
+	/* config uc vague table */
+	hns_dsaf_tcam_uc_cfg_vague(dsaf_dev, entry_index, &tbl_tcam_data_uc,
+				   &tbl_tcam_mask, &tbl_tcam_ucast);
+	/* update soft management table. */
+	soft_mac_entry = priv->soft_mac_tbl;
+	soft_mac_entry += entry_index;
+	soft_mac_entry->index = DSAF_INVALID_ENTRY_IDX;
+	/* step back to the START for mc. */
+	soft_mac_entry = priv->soft_mac_tbl;
+
+	/* 2. delete mc vague tcam entry. */
+	addr[0] = 0x01;
+	memset(&mac_key, 0x0, sizeof(mac_key));
+	hns_dsaf_set_mac_key(dsaf_dev, &mac_key, 0x00, port, addr);
+	entry_index = hns_dsaf_find_soft_mac_entry(dsaf_dev, &mac_key);
+
+	if (entry_index == DSAF_INVALID_ENTRY_IDX)
+		return;
+
+	/* config mc vague table */
+	hns_dsaf_tcam_mc_cfg_vague(dsaf_dev, entry_index, &tbl_tcam_data_mc,
+				   &tbl_tcam_mask, &tbl_tcam_mcast);
+	/* update soft management table. */
+	soft_mac_entry += entry_index;
+	soft_mac_entry->index = DSAF_INVALID_ENTRY_IDX;
+}
+
 /* Reserve the last TCAM entry for promisc support */
 #define dsaf_promisc_tcam_entry(port) \
 	(DSAF_TCAM_SUM - DSAFV2_MAC_FUZZY_TCAM_NUM + (port))
