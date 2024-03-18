@@ -1,0 +1,59 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "BLANC_LX9_V1_config.dtsi"
+/include/ "BLANC_LX9_V3_9688_pin.dtsi"
+/include/ "BLANC_LX9_V3_9688_sec_pin.dtsi"
+/include/ "BLANC_LX9_V3_9688_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 4 5 3>;
+	hisi,boardname = "BLANC_LX9_V3_9688";
+	hisi,product_id = <0x39011000>;
+	hisi,modem_id = <0x39011000>;
+	direct_charger: direct_charger{
+		scp_work_on_charger = <0>;
+		status = "ok";
+	};
+	amba {
+		i2c6: i2c@FFD6A000 {
+			hi6523_charger_i2c6: hi6523_charger_i2c6@6B{
+				status = "ok";
+				fcp_support = <0>;
+				scp_support = <0>;
+				scp_need_extra_power = <0>;
+				bst_ctrl_use_common_gpio = <0>;
+			};
+			fairchild_fsa9685_i2c6: fsa9685_i2c6@25{
+				fairchild_fsa9685,gpio-intb = <&gpio23 0 0>;
+				bst_ctrl = <&gpio23 1 0>;
+				status = "ok";
+			};
+		};
+	};
+	devcheck: devcheck {
+		usb_switch = <1>;
+		status = "ok";
+	};
+	hisi_usb: hisi_usb@ff200000 {
+		set_hi_impedance = <0x1>;
+	};
+	sensorhub{
+		als_sensor:light{
+			als1{
+				als_phone_version = <12>;
+			};
+			als2{
+				als_phone_version = <12>;
+			};
+		};
+	};
+};

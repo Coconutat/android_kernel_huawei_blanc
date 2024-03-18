@@ -1,0 +1,23 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "BKL_AL00_V1_config.dtsi"
+
+/ {
+	hisi,boardid = <6 9 9 1>;
+	hisi,boardname = "BKL_L09_V3";
+	hisi,modem_id = <0x39602400>;
+	hisi,product_name = "BKL-L09";
+
+	/*hisi connectivity customize*/
+	hisi_cust_cfg {
+		compatible = "hi1102,customize";
+		ini_file_name = "/vendor/etc/cfg_bkl_lx9_hisi.ini";
+	};
+};

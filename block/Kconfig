@@ -36,7 +36,7 @@ config LBDAF
 	  This option is required to support the full capacity of large
 	  (2TB+) block devices, including RAID, disk, Network Block Device,
 	  Logical Volume Manager (LVM) and loopback.
-	
+
 	  This option also enables support for single files larger than
 	  2TB.
 
@@ -128,6 +128,14 @@ config BLK_DEV_THROTTLING_LOW
 
 	Note, this is an experimental interface and could be changed someday.
 
+config BLK_DEV_HI_PRIO_FOR_FG
+	bool "Block layer high priority for foreground requests support"
+	depends on BLK_DEV_THROTTLING=y
+	default n
+	---help---
+	Give high priority for foreground requests, reserve some tags for
+	forground requests to make sure these requests have low lantency.
+
 config BLK_CMDLINE_PARSER
 	bool "Block device command line partition parser"
 	default n
@@ -138,6 +146,156 @@ config BLK_CMDLINE_PARSER
 	partitions on a block device.
 
 	See Documentation/block/cmdline-partition.txt for more information.
+
+config HISI_BLOCK_FREQUENCE_CONTROL
+        bool "add ddr frequence request base on block layer."
+        depends on BLOCK
+        default n
+
+config MMC_BLOCK_IOMMU_64BIT
+        bool "Block bounce limit"
+        depends on BLOCK
+        default n
+        help
+        Blk-setting will use address >4G for IOMMU.
+
+config HISI_BLK
+	bool "HISI Block feature"
+	depends on BLOCK
+	default n
+	help
+		HISI Block feature
+
+choice
+    prompt "Select hisi IO classify method"
+    depends on HISI_BLK
+
+config HISI_IO_CLASSIFY_FG
+     bool "use iaware FG classification"
+config HISI_IO_CLASSIFY_SCHED_TUNE
+     bool "use AI sched tune"
+     depends on SCHED_TUNE
+endchoice
+
+config HISI_BKOPS
+	bool "HISI BKOPS"
+	depends on HISI_BLK
+	default n
+	help
+		HISI BKOPS feature
+
+config HISI_BLK_DEBUG
+	bool "HISI_BLK_DEBUG"
+	depends on HISI_BLK
+	default n
+	help
+		HISI block debug, need to be removed!
+
+config HISI_STORAGE
+    bool "HISI Kirin Storage related change"
+    default n
+    help
+        HISI Kirin Storage related change of Linux source code
+
+config HISI_MQ_USING_CP
+    bool "HISI Kirin UFS Command Priority"
+    depends on HISI_BLK
+    default n
+    help
+        HISI Kirin UFS Command Priority, good for foreground APP's IO performance
+
+config HISI_IO_TRACE
+	bool "HISI_IO_TRACE"
+	depends on HISI_DEBUG_FS
+	default n
+	help
+		HISI io trace event, as supplement to block_rq_issue and block_rq_complete
+
+config HISI_IO_DEBUG_TRACE
+	bool "HISI_IO_DEBUG_TRACE"
+	depends on HISI_IO_TRACE
+	default n
+	help
+		HISI io debug trace event
+
+config HISI_PARTITION
+        bool "hisi partition"
+        default n
+
+config HW_SYSTEM_WR_PROTECT
+	bool "write protection function of system partitions."
+	depends on BLOCK
+	default n
+
+config HISI_PARTITION_HI3650
+        bool "hi3650 partition"
+        depends on HISI_PARTITION
+        default n
+        help
+            config partition for hi3650 platform
+
+config HISI_PARTITION_HI6250
+        bool "hi6250 partition"
+        depends on HISI_PARTITION
+        default n
+        help
+            config partition for hi6250 platform
+
+config HISI_PARTITION_HI3660
+        bool "hi3660 partition"
+        depends on HISI_PARTITION
+        default n
+        help
+            config partition for hi3660 platform
+
+config HISI_PARTITION_CAPRICORN
+        bool "capricorn partition"
+        depends on HISI_PARTITION
+        default n
+        help
+          config partition for capricorn platform
+
+config HISI_PARTITION_LIBRA
+        bool "libra partition"
+        depends on HISI_PARTITION
+        default n
+        help
+        config partition for libra platform
+
+config HISI_PARTITION_KIRIN970
+        bool "kirin970 partition"
+        depends on HISI_PARTITION
+        default n
+        help
+            config partition for kirin970 platform
+
+config HISI_PARTITION_CANCER
+        bool "cancer partition"
+        depends on HISI_PARTITION
+        default n
+        help
+            config partition for cancer platform
+
+config HISI_PARTITION_TAURUS
+        bool "taurus partition"
+        depends on HISI_PARTITION
+        default n
+        help
+            config partition for taurus platform
+
+config HISI_PARTITION_LEO
+	bool "leo partition"
+	depends on HISI_PARTITION
+	default n
+	help
+	    config partition for leo platform
+
+config HISI_PARTITION_PISCES
+        bool "pisces partition"
+        depends on HISI_PARTITION
+        default n
+        help
+            config partition for pisces platform
 
 config BLK_WBT
 	bool "Enable support for block device writeback throttling"
@@ -183,6 +341,13 @@ config BLK_SED_OPAL
 	Builds Logic for interfacing with Opal enabled controllers.
 	Enabling this option enables users to setup/unlock/lock
 	Locking ranges for SED devices using the Opal protocol.
+
+config HUAWEI_QOS_BLKIO
+        bool "blkio support huawei qos"
+        depends on HW_QOS_THREAD || HW_QOS_THREAD_S
+        default y
+        help
+          Say Y here if it is supported.
 
 menu "Partition Types"
 

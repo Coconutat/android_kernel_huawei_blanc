@@ -1,0 +1,74 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "NEO_TUGL_V0_overlay.dtsi"
+
+/ {
+        board_id = <6481>;
+};
+
+&rootparam {
+    hisi,boardid = <6 4 8 1>;
+    hisi,boardname = "NEO_TUGL_V1";
+};
+
+
+&fingerprint {
+	spi-max-frequency = <5000000>;
+	fingerprint,product = "neo";
+
+	fingerprint,navigation_adjust1 = <0>;
+	fingerprint,navigation_adjust2 = <0>;
+
+	fingerprint,fpc2050 = <1>;
+	fingerprint,reset_gpio = <209>; /*202*/
+	fingerprint,irq_gpio = <202>; /*209*/
+	fingerprint,cs_gpio = <217>;
+	fingerprint,spi_num = <2>;
+	fingerprint,force_storage_type = <1>;
+	fingerprint,sensor_type = <769>;
+	pinctrl-names = "default", "idle";
+};
+&gps_power {
+	status = "ok";
+	huawei,gps_en = <&gpio7 4 0>;
+	huawei,gps_hostwake = <&gpio22 6 0>;
+	pinctrl-0 = <&gpio012_pmx_func &gpio012_cfg_func>;
+	pinctrl-1 = <&gpio012_pmx_idle &gpio012_cfg_idle>;
+	huawei,gps_refclk = <5>;
+	huawei,mcu_req = <&gpio24 4 0>;
+	huawei,mcu_req_rsp = <&gpio27 2 0>;
+	broadcom_config,ic_type="bcm4774";
+	broadcom_config,tty_port="ttyAMA5";
+	factest_timeout="9";
+};
+	&sensorhub{
+                sar{
+                        sar1{
+                               status = "ok";
+                        };
+                        sar2{
+                                status = "disabled";
+                        };
+                };
+        };
+
+&hall {
+	status = "ok";
+	huawei,hall_0 {
+		huawei,single-n-pole = <&gpio28 4 0>;
+		huawei,type = <0x01>;
+		huawei,default-state = "on";
+	};
+};
+&bluetooth_sleep {
+	status = "ok";
+	huawei,host_wake_bt = <59>;
+	huawei,bt_wake_host = <151>;
+};

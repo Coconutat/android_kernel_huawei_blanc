@@ -220,4 +220,10 @@ config VMD
 	  To compile this driver as a module, choose M here: the
 	  module will be called vmd.
 
+config KIRIN_PCIE_NOC_DBG
+    tristate "Hisilicon kirin NOC DEBUG"
+    select PCIE_KIRIN
+    help
+      Say Y here if you want dump pcie host info when PCIe NOC happen
+
 endmenu

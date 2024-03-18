@@ -25,7 +25,7 @@
 #include "xhci-plat.h"
 #include "xhci-mvebu.h"
 #include "xhci-rcar.h"
-
+#include "xhci-debugfs.h"
 static struct hc_driver __read_mostly xhci_plat_hc_driver;
 
 static int xhci_plat_setup(struct usb_hcd *hcd);
@@ -112,6 +112,29 @@ static const struct xhci_plat_priv xhci_plat_renesas_rcar_gen3 = {
 	.resume_quirk = xhci_rcar_resume_quirk,
 };
 
+#ifdef CONFIG_USB_DWC3_NYET_ABNORMAL
+static int xhci_hifi_usb_plat_quirk(struct usb_hcd *hcd)
+{
+	struct device *dev = hcd->self.controller;
+	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+
+	if (device_property_read_bool(dev, "hcd-local-mem"))
+		xhci->quirks |= XHCI_HCD_LOCAL_MEM;
+
+	if (device_property_read_bool(dev, "disable-lpm"))
+		xhci->quirks |= XHCI_DISABLE_LPM;
+
+	if (device_property_read_bool(dev, "not-support-sg"))
+		xhci->quirks |= XHCI_NOT_SUP_SG;
+
+	return 0;
+}
+
+static const struct xhci_plat_priv xhci_hifi_usb_plat = {
+	.init_quirk = xhci_hifi_usb_plat_quirk,
+};
+#endif
+
 static const struct of_device_id usb_xhci_of_match[] = {
 	{
 		.compatible = "generic-xhci",
@@ -161,9 +184,25 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	struct clk              *clk;
 	int			ret;
 	int			irq;
+#ifdef CONFIG_USB_DWC3_NYET_ABNORMAL
+	int			hcd_local_mem = 0;
+#endif
 
 	if (usb_disabled())
 		return -ENODEV;
+
+#ifdef CONFIG_USB_DWC3_NYET_ABNORMAL
+	if (device_property_read_bool(&pdev->dev, "hcd-local-mem")) {
+		hcd_local_mem = 1;
+		xhci_plat_hc_driver.flags |= HCD_LOCAL_MEM;
+		xhci_plat_hc_driver.map_urb_for_dma = xhci_map_urb_for_dma;
+		xhci_plat_hc_driver.unmap_urb_for_dma = xhci_unmap_urb_for_dma;
+	} else {
+		xhci_plat_hc_driver.flags &= ~HCD_LOCAL_MEM;
+		xhci_plat_hc_driver.map_urb_for_dma = NULL;
+		xhci_plat_hc_driver.unmap_urb_for_dma = NULL;
+	}
+#endif
 
 	driver = &xhci_plat_hc_driver;
 
@@ -217,6 +256,10 @@ static int xhci_plat_probe(struct platform_device *pdev)
 		goto disable_runtime;
 	}
 
+#ifdef CONFIG_HISI_USB_SKIP_RESUME
+	hcd_to_bus(hcd)->skip_resume = true;
+#endif
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	hcd->regs = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(hcd->regs)) {
@@ -262,9 +305,48 @@ static int xhci_plat_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto disable_clk;
 	}
+#ifdef CONFIG_HISI_USB_SKIP_RESUME
+	hcd_to_bus(xhci->shared_hcd)->skip_resume = true;
+#endif
+
+#ifdef CONFIG_USB_DWC3_NYET_ABNORMAL
+	if (hcd_local_mem) {
+		struct xhci_plat_priv *priv = hcd_to_xhci_priv(hcd);
+
+		ret = xhci_create_dma_pool(xhci);
+		if (ret)
+		        goto put_usb3_hcd;
+
+		INIT_LIST_HEAD(&xhci->dma_manager.dma_free_list);
+		INIT_WORK(&xhci->dma_manager.dma_free_wk,
+					xhci_dma_free_handler);
+		spin_lock_init(&xhci->dma_manager.lock);
+
+		*priv = xhci_hifi_usb_plat;
+	}
+#endif
 
 	if (device_property_read_bool(sysdev, "usb3-lpm-capable"))
 		xhci->quirks |= XHCI_LPM_SUPPORT;
+
+	if (pdev->dev.parent && (of_device_is_compatible(pdev->dev.parent->of_node,
+				"snps,dwc3") > 0)) {
+		struct device *parent = pdev->dev.parent;
+
+		if (device_property_read_bool(parent,
+				"snps,ctrl_nyet_abnormal"))
+			xhci->quirks |= XHCI_CTRL_NYET_ABNORMAL;
+
+		if (device_property_read_bool(parent,
+				"snps,warm_reset_after_init"))
+			xhci->quirks |= XHCI_WARM_RESET_AFTER_INIT;
+
+		if (device_property_read_bool(parent,
+				"snps,xhci-delay-ctrl-data-stage"))
+			xhci->quirks |= XHCI_DELAY_CTRL_DATA_STAGE;
+
+	} else
+		dev_err(&pdev->dev, "no parent or not match \"snps,dwc3\"\n");
 
 	if (device_property_read_bool(&pdev->dev, "quirk-broken-port-ped"))
 		xhci->quirks |= XHCI_BROKEN_PORT_PED;
@@ -301,8 +383,16 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	 */
 	pm_runtime_forbid(&pdev->dev);
 
+	ret = xhci_create_debug_file(xhci);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to initialize debugfs\n");
+		goto dealloc_usb3_hcd;
+	}
+
 	return 0;
 
+dealloc_usb3_hcd:
+	usb_remove_hcd(xhci->shared_hcd);
 
 dealloc_usb2_hcd:
 	usb_remove_hcd(hcd);
@@ -332,16 +422,25 @@ static int xhci_plat_remove(struct platform_device *dev)
 	struct usb_hcd	*hcd = platform_get_drvdata(dev);
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
 	struct clk *clk = xhci->clk;
-	struct usb_hcd *shared_hcd = xhci->shared_hcd;
 
 	xhci->xhc_state |= XHCI_STATE_REMOVING;
 
-	usb_remove_hcd(shared_hcd);
-	xhci->shared_hcd = NULL;
+	/* add for xhci debug */
+	xhci_remove_debug_file(xhci);
+
+	usb_remove_hcd(xhci->shared_hcd);
 	usb_phy_shutdown(hcd->usb_phy);
 
 	usb_remove_hcd(hcd);
-	usb_put_hcd(shared_hcd);
+
+#ifdef CONFIG_USB_DWC3_NYET_ABNORMAL
+	xhci_destroy_dma_pool(xhci);
+
+	if (hcd->driver->flags & HCD_LOCAL_MEM)
+		flush_work(&xhci->dma_manager.dma_free_wk);
+#endif
+
+	usb_put_hcd(xhci->shared_hcd);
 
 	if (!IS_ERR(clk))
 		clk_disable_unprepare(clk);
@@ -430,7 +529,7 @@ static int __init xhci_plat_init(void)
 	xhci_init_driver(&xhci_plat_hc_driver, &xhci_plat_overrides);
 	return platform_driver_register(&usb_xhci_driver);
 }
-module_init(xhci_plat_init);
+late_initcall(xhci_plat_init);
 
 static void __exit xhci_plat_exit(void)
 {

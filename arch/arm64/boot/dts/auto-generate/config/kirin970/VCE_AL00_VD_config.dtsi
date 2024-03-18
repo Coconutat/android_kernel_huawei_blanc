@@ -1,0 +1,27 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "VCE_AL00_VC_config.dtsi"
+
+/ {
+	hisi,boardid = <6 9 7 8>;
+	hisi,boardname = "VCE_AL00_VD";
+	hisi,modem_id = <0X39651400>;
+
+    huawei_imx350: huawei,imx350 {
+	    compatible = "huawei,imx350VCE";
+	    status = "ok";
+    };
+
+    huawei_ov20880: huawei,ov20880 {
+	    compatible = "huawei,ov20880VCE";
+	    status = "ok";
+    };
+};
+

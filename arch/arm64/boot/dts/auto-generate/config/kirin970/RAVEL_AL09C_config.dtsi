@@ -1,0 +1,33 @@
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "RAVEL_AL09A_config.dtsi"
+/ {
+	hisi,boardid = <6 1 0 2>;
+	hisi,boardname = "RAVEL_AL09C";
+
+	deviceboxID: deviceboxID@0 {
+		check_mode = "gpio";
+		box_num = <1>;
+		enable_boxID = <1 0 0 0>;
+		gpio_num = <1 0 0 0>;
+		gpio_speakerID = <&gpio16 1 0>;
+		speaker_map = <1 3>;/*1-AAC 3-GD*/
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&gpio129_pmx_func &gpio129_cfg_func>;
+		pinctrl-1 = <&gpio129_pmx_idle &gpio129_cfg_idle>;
+		deviceboxID_limit = <500>;
+		status = "ok";
+	};
+
+	ts_kit: ts_kit {
+		sec_ts: touchscreen@90 {
+			is_need_set_pinctrl = <0>;
+		};
+	};
+};

@@ -20,6 +20,14 @@
 #include <asm/pgtable.h>
 #include "internal.h"
 
+#ifdef CONFIG_ION
+#include <linux/hisi/hisi_ion.h>
+#endif
+
+#ifdef CONFIG_OF_RESERVED_MEM
+#include <linux/of_reserved_mem.h>
+#endif
+
 void __attribute__((weak)) arch_report_meminfo(struct seq_file *m)
 {
 }
@@ -155,6 +163,26 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		    global_zone_page_state(NR_FREE_CMA_PAGES));
 #endif
 
+#ifdef CONFIG_ION
+	show_val_kb(m, "IonTotalCache:  ", global_zone_page_state(NR_IONCACHE_PAGES));
+	show_val_kb(m, "IonTotalUsed:   ",
+		    hisi_ion_total() >> PAGE_SHIFT);
+#endif
+
+#ifdef CONFIG_TASK_PROTECT_LRU
+	show_val_kb(m, "PActive(anon):   ",
+			  global_zone_page_state(NR_PROTECT_ACTIVE_ANON));
+	show_val_kb(m, "PInactive(anon):   ",
+			  global_zone_page_state(NR_PROTECT_INACTIVE_ANON));
+	show_val_kb(m, "PActive(file):   ",
+			  global_zone_page_state(NR_PROTECT_ACTIVE_FILE));
+	show_val_kb(m, "PInactive(file):   ",
+			  global_zone_page_state(NR_PROTECT_INACTIVE_FILE));
+#endif
+#ifdef CONFIG_OF_RESERVED_MEM
+	show_val_kb(m, "RsvTotalUsed:   ",
+			dt_memory_reserved_sizeinfo_get() >> PAGE_SHIFT);
+#endif
 	hugetlb_report_meminfo(m);
 
 	arch_report_meminfo(m);

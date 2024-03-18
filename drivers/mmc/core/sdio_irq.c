@@ -167,10 +167,10 @@ static int sdio_irq_thread(void *_host)
 		 * errors.
 		 */
 		if (ret < 0) {
-			set_current_state(TASK_INTERRUPTIBLE);
+			set_current_state(TASK_INTERRUPTIBLE); /*lint !e446 !e666*/
 			if (!kthread_should_stop())
 				schedule_timeout(HZ);
-			set_current_state(TASK_RUNNING);
+			set_current_state(TASK_RUNNING); /*lint !e446 !e666*/
 		}
 
 		/*
@@ -188,12 +188,12 @@ static int sdio_irq_thread(void *_host)
 			}
 		}
 
-		set_current_state(TASK_INTERRUPTIBLE);
+		set_current_state(TASK_INTERRUPTIBLE); /*lint !e446 !e666*/
 		if (host->caps & MMC_CAP_SDIO_IRQ)
 			host->ops->enable_sdio_irq(host, 1);
 		if (!kthread_should_stop())
 			schedule_timeout(period);
-		set_current_state(TASK_RUNNING);
+		set_current_state(TASK_RUNNING); /*lint !e446 !e666*/
 	} while (!kthread_should_stop());
 
 	if (host->caps & MMC_CAP_SDIO_IRQ)
@@ -255,7 +255,7 @@ static int sdio_card_irq_put(struct mmc_card *card)
 static void sdio_single_irq_set(struct mmc_card *card)
 {
 	struct sdio_func *func;
-	int i;
+	unsigned int i;
 
 	card->sdio_single_irq = NULL;
 	if ((card->host->caps & MMC_CAP_SDIO_IRQ) &&
@@ -298,7 +298,7 @@ int sdio_claim_irq(struct sdio_func *func, sdio_irq_handler_t *handler)
 	if (ret)
 		return ret;
 
-	reg |= 1 << func->num;
+	reg |= 1 << func->num; /*lint !e502*/
 
 	reg |= 1; /* Master interrupt enable */
 

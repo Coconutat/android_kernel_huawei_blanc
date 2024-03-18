@@ -34,6 +34,7 @@
 #include <linux/of_fdt.h>
 #include <linux/dma-mapping.h>
 #include <linux/dma-contiguous.h>
+#include <linux/hisi/hisi_cma.h>
 #include <linux/efi.h>
 #include <linux/swiotlb.h>
 #include <linux/vmalloc.h>
@@ -60,7 +61,9 @@
  * that cannot be mistaken for a real physical address.
  */
 s64 memstart_addr __ro_after_init = -1;
+s64 phystart_addr __ro_after_init = -1;
 phys_addr_t arm64_dma_phys_limit __ro_after_init;
+static unsigned int dma_zone_only;
 
 #ifdef CONFIG_BLK_DEV_INITRD
 static int __init early_initrd(char *p)
@@ -79,6 +82,20 @@ static int __init early_initrd(char *p)
 }
 early_param("initrd", early_initrd);
 #endif
+
+static int __init early_dma_zone_only(char *arg)
+{
+	if (!arg)
+		return -EINVAL;
+
+	if (!strncmp(arg, "true", strlen("true")))
+		dma_zone_only = 1;
+	else
+		dma_zone_only = 0;
+
+	return 0;
+}
+early_param("dma_zone_only", early_dma_zone_only); /*lint -e528 */
 
 #ifdef CONFIG_KEXEC_CORE
 /*
@@ -224,7 +241,10 @@ static void __init reserve_elfcorehdr(void)
 static phys_addr_t __init max_zone_dma_phys(void)
 {
 	phys_addr_t offset = memblock_start_of_DRAM() & GENMASK_ULL(63, 32);
-	return min(offset + (1ULL << 32), memblock_end_of_DRAM());
+	if (dma_zone_only)
+		return memblock_end_of_DRAM();
+	else
+		return min(offset + (1ULL << 32), memblock_end_of_DRAM());
 }
 
 #ifdef CONFIG_NUMA
@@ -383,6 +403,7 @@ void __init arm64_memblock_init(void)
 	memstart_addr = round_down(memblock_start_of_DRAM(),
 				   ARM64_MEMSTART_ALIGN);
 
+	phystart_addr = memstart_addr;
 	/*
 	 * Remove the memory that we will not be able to cover with the
 	 * linear mapping. Take care not to clip the kernel which may be
@@ -447,7 +468,7 @@ void __init arm64_memblock_init(void)
 		 * memory spans, randomize the linear region as well.
 		 */
 		if (memstart_offset_seed > 0 && range >= ARM64_MEMSTART_ALIGN) {
-			range /= ARM64_MEMSTART_ALIGN;
+			range = range / ARM64_MEMSTART_ALIGN;
 			memstart_addr -= ARM64_MEMSTART_ALIGN *
 					 ((range * memstart_offset_seed) >> 16);
 		}
@@ -483,6 +504,10 @@ void __init arm64_memblock_init(void)
 	high_memory = __va(memblock_end_of_DRAM() - 1) + 1;
 
 	dma_contiguous_reserve(arm64_dma_phys_limit);
+
+#ifdef CONFIG_HISI_CMA
+	of_hisi_cma_contiguous_reserve_area(arm64_dma_phys_limit);
+#endif
 
 	memblock_allow_resize();
 }
@@ -547,7 +572,8 @@ static void __init free_unused_memmap(void)
 	struct memblock_region *reg;
 
 	for_each_memblock(memory, reg) {
-		start = __phys_to_pfn(reg->base);
+		start = round_down(__phys_to_pfn(reg->base),
+				   MAX_ORDER_NR_PAGES);
 
 #ifdef CONFIG_SPARSEMEM
 		/*
@@ -568,7 +594,7 @@ static void __init free_unused_memmap(void)
 		 * memmap entries are valid from the bank end aligned to
 		 * MAX_ORDER_NR_PAGES.
 		 */
-		prev_end = ALIGN(__phys_to_pfn(reg->base + reg->size),
+		prev_end = round_up(__phys_to_pfn(reg->base + reg->size),
 				 MAX_ORDER_NR_PAGES);
 	}
 
@@ -587,7 +613,7 @@ static void __init free_unused_memmap(void)
 void __init mem_init(void)
 {
 	if (swiotlb_force == SWIOTLB_FORCE ||
-	    max_pfn > (arm64_dma_phys_limit >> PAGE_SHIFT))
+	    max_pfn >= (arm64_dma_phys_limit >> PAGE_SHIFT))
 		swiotlb_init(1);
 	else
 		swiotlb_force = SWIOTLB_NO_FORCE;

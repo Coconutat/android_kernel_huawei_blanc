@@ -218,6 +218,10 @@ static int cryptomgr_test(void *data)
 	goto skiptest;
 #endif
 
+#ifdef CONFIG_HUAWEI_CRYPTO_TEST_MDPP
+	goto skiptest;
+#endif
+
 	if (type & CRYPTO_ALG_TESTED)
 		goto skiptest;
 

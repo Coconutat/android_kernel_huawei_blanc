@@ -1,0 +1,45 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "BKL_AL20_V4_overlay.dtsi"
+
+/ {
+	board_id = <6917>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <156>;
+    hisi,boardid = <6 9 1 7>;
+    hisi,boardname = "BKL_AL20_DELETE9688_VN1";
+};
+
+	&amba {
+		i2c@FFD6A000 {
+			hi6523_charger_i2c6@6B{
+				status = "ok";
+				single_phase_buck = <0>;
+				fcp_support = <1>;
+				scp_support = <1>;
+				scp_need_extra_power = <1>;
+			};
+			fsa9685_i2c6@25{
+				status = "disabled";
+			};
+		};
+	};
+	&devcheck {
+		usb_switch = <0>;
+		status = "ok";
+	};
+	&direct_charger{
+		scp_work_on_charger = <1>;
+		status = "ok";
+	};

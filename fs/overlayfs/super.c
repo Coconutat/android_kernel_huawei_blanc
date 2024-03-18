@@ -11,6 +11,7 @@
 #include <linux/fs.h>
 #include <linux/namei.h>
 #include <linux/xattr.h>
+#include <linux/security.h>
 #include <linux/mount.h>
 #include <linux/parser.h>
 #include <linux/module.h>
@@ -38,6 +39,12 @@ static bool ovl_index_def = IS_ENABLED(CONFIG_OVERLAY_FS_INDEX);
 module_param_named(index, ovl_index_def, bool, 0644);
 MODULE_PARM_DESC(ovl_index_def,
 		 "Default to on or off for the inodes index feature");
+
+//static bool __read_mostly ovl_override_creds_def = true;
+static bool __read_mostly ovl_override_creds_def = false;
+module_param_named(override_creds, ovl_override_creds_def, bool, 0644);
+MODULE_PARM_DESC(ovl_override_creds_def,
+		 "Use mounter's credentials for accesses");
 
 static void ovl_dentry_release(struct dentry *dentry)
 {
@@ -318,6 +325,9 @@ static int ovl_show_options(struct seq_file *m, struct dentry *dentry)
 	if (ufs->config.index != ovl_index_def)
 		seq_printf(m, ",index=%s",
 			   ufs->config.index ? "on" : "off");
+	if (ufs->config.override_creds != ovl_override_creds_def)
+		seq_show_option(m, "override_creds",
+				ufs->config.override_creds ? "on" : "off");
 	return 0;
 }
 
@@ -351,6 +361,8 @@ enum {
 	OPT_REDIRECT_DIR_OFF,
 	OPT_INDEX_ON,
 	OPT_INDEX_OFF,
+	OPT_OVERRIDE_CREDS_ON,
+	OPT_OVERRIDE_CREDS_OFF,
 	OPT_ERR,
 };
 
@@ -363,6 +375,8 @@ static const match_table_t ovl_tokens = {
 	{OPT_REDIRECT_DIR_OFF,		"redirect_dir=off"},
 	{OPT_INDEX_ON,			"index=on"},
 	{OPT_INDEX_OFF,			"index=off"},
+	{OPT_OVERRIDE_CREDS_ON,		"override_creds=on"},
+	{OPT_OVERRIDE_CREDS_OFF,	"override_creds=off"},
 	{OPT_ERR,			NULL}
 };
 
@@ -393,6 +407,7 @@ static int ovl_parse_opt(char *opt, struct ovl_config *config)
 {
 	char *p;
 
+	config->override_creds = ovl_override_creds_def;
 	while ((p = ovl_next_opt(&opt)) != NULL) {
 		int token;
 		substring_t args[MAX_OPT_ARGS];
@@ -441,6 +456,14 @@ static int ovl_parse_opt(char *opt, struct ovl_config *config)
 
 		case OPT_INDEX_OFF:
 			config->index = false;
+			break;
+
+		case OPT_OVERRIDE_CREDS_ON:
+			config->override_creds = true;
+			break;
+
+		case OPT_OVERRIDE_CREDS_OFF:
+			config->override_creds = false;
 			break;
 
 		default:
@@ -524,11 +547,11 @@ retry:
 		 * allowed as upper are limited to "normal" ones, where checking
 		 * for the above two errors is sufficient.
 		 */
-		err = vfs_removexattr(work, XATTR_NAME_POSIX_ACL_DEFAULT);
+		err = vfs_removexattr(NULL, work, XATTR_NAME_POSIX_ACL_DEFAULT);
 		if (err && err != -ENODATA && err != -EOPNOTSUPP)
 			goto out_dput;
 
-		err = vfs_removexattr(work, XATTR_NAME_POSIX_ACL_ACCESS);
+		err = vfs_removexattr(NULL, work, XATTR_NAME_POSIX_ACL_ACCESS);
 		if (err && err != -ENODATA && err != -EOPNOTSUPP)
 			goto out_dput;
 
@@ -1026,7 +1049,7 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 				ufs->noxattr = true;
 				pr_warn("overlayfs: upper fs does not support xattr.\n");
 			} else {
-				vfs_removexattr(ufs->workdir, OVL_XATTR_OPAQUE);
+				vfs_removexattr(NULL, ufs->workdir, OVL_XATTR_OPAQUE);
 			}
 
 			/* Check if upper/work fs supports file handles */
@@ -1158,6 +1181,9 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 
 	sb->s_root = root_dentry;
 
+#ifdef CONFIG_SECURITY
+	security_sb_clone_mnt_opts(oe->lowerstack[0].mnt->mnt_sb, sb, 0, NULL);
+#endif
 	return 0;
 
 out_free_oe:

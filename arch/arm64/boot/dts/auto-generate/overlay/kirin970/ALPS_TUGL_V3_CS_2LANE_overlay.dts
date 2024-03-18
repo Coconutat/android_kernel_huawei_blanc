@@ -1,0 +1,109 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "ALPS_TUGL_V1_CS_overlay.dtsi"
+
+/ {
+	board_id = <6409>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <45>;
+    hisi,boardid = <6 4 0 9>;
+    hisi,boardname = "ALPS_TUGL_V3_CS_2LANE";
+};
+
+	&huawei_lcd_panel {
+		product_id = <1001>;
+	};
+
+	&sensorhub{
+		gsensor{
+			acc1{
+				negate_x =<0>;
+				negate_y =<1>;
+				negate_z =<1>;
+			};
+			acc2{
+				negate_x =<0>;
+				negate_y =<1>;
+				negate_z =<1>;
+			};
+		};
+		gyroscope{
+			gyro1{
+				position = <5>;
+				axis_map_x =<0>;
+				axis_map_y =<1>;
+				axis_map_z =<2>;
+				negate_x =<0>;
+				negate_y =<1>;
+				negate_z =<1>;
+			};
+			gyro2{
+				position = <5>;
+				axis_map_x =<0>;
+				axis_map_y =<1>;
+				axis_map_z =<2>;
+				negate_x =<0>;
+				negate_y =<1>;
+				negate_z =<1>;
+			};
+		};
+		rpc{
+           		 rpc{
+				compatible = "huawei,rpc";
+				file_id = <0x18>;
+				sensor_list_info_id = <24>;
+				sensor_type = "rpc";
+				sensorlist_name = "rpc";
+				mask = <0xFFFF 0x630 0x630 0x630 0x200 0xFFFF 0xFFFF 0xFFFF
+						0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF
+						0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF
+						0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF>;
+				table = <0xFFFF 0x210 0x220 0x200 0x0 0xFFFF 0xFFFF 0xFFFF
+						 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF
+						 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF
+						 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF>;
+				default_value = <0x1D>;
+				status = "ok";
+			};
+        	};
+		magn_bracket{
+			magn_bracket{
+				compatible="huawei,magn_bracket";
+				sensor_type="hw_magn_bracket";
+				file_id=<21>;
+				sensor_list_info_id = <23>;
+				mag_axis_change = <0x32 0x9c4 0x8c 0x1388 0xfffff254 0xffffff6a>;
+				sensorlist_name="magn_bracket";
+				vendor="hw";
+				status = "ok";
+			};
+		};
+	};
+	&amba {
+		i2c@FDF0D000 {
+
+			huawei,lm3646@67{
+				huawei,led-type = <0>; /* 1, dual tempature; 0, dual white */
+				huawei,flash-current = <0 15 0>; /* */
+				status = "ok";
+			};
+
+			huawei,mp3336@27{
+				huawei,led-type = <0>; /* 1, dual tempature; 0, dual white */
+				huawei,flash-current = <0 18 0>;
+				status = "ok";
+			};
+
+		};
+	};

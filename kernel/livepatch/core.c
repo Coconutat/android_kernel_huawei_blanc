@@ -514,7 +514,10 @@ static ssize_t transition_show(struct kobject *kobj,
 			patch == klp_transition_patch);
 }
 
-static struct kobj_attribute enabled_kobj_attr = __ATTR_RW(enabled);
+static struct kobj_attribute enabled_kobj_attr =
+	__ATTR(enabled, 0664,
+		enabled_show, enabled_store);
+
 static struct kobj_attribute transition_kobj_attr = __ATTR_RO(transition);
 static struct attribute *klp_patch_attrs[] = {
 	&enabled_kobj_attr.attr,

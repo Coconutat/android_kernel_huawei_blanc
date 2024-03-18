@@ -1,0 +1,83 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "NEO_TUGL_V3_FP_OPT_overlay.dtsi"
+/include/ "NEO_TUGL_V4_FP_OPT_overlay_module_amba.dts"
+
+/ {
+        board_id = <6490>;
+};
+
+&rootparam {
+    hisi,boardid = <6 4 9 0>;
+    hisi,boardname = "NEO_TUGL_V4_FP_OPT";
+};
+
+
+&cc_anti_corrosion {
+	cc_corrosion_gpio = <&gpio23 1 0>;
+	pinctrl-0 = <&gpio185_pmx_func &gpio185_cfg_func>;
+	pinctrl-1 = <&gpio185_pmx_idle &gpio185_cfg_idle>;
+	gpio_mode = <1>;
+	status = "disabled";
+};
+
+&fingerprint {
+	spi-max-frequency = <5000000>;
+	fingerprint,product = "neo";
+
+	fingerprint,navigation_adjust1 = <0>; /*only for UG*/
+	fingerprint,navigation_adjust2 = <0>; /*only for UG*/
+
+	fingerprint,fpc2050 = <1>; /*both use*/
+	fingerprint,spi_num = <2>; /*both use*/
+	fingerprint,force_storage_type = <1>; /*both use*/
+	fingerprint,sensor_type = <8453>;
+
+	fingerprint,reset_gpio = <202>; /*only for UG*/
+	fingerprint,irq_gpio = <209>; /*only for UG*/
+	fingerprint,cs_gpio = <217>; /*only for UG*/
+	fingerprint,reset_gpio_ud = <211>; /*only for UD*/
+	fingerprint,irq_gpio_ud = <147>; /*only for UD*/
+	fingerprint,cs_gpio_ud = <216>; /*only for UD*/
+
+	fingerprint,top_left_corner_x = <459>; /*only for UD*/
+	fingerprint,top_left_corner_y = <628>; /*only for UD*/
+	fingerprint,bottom_right_corner_x = <540>; /*only for UD*/
+	fingerprint,bottom_right_corner_y = <669>; /*only for UD*/
+	fingerprint,tp_hover_support = <1>;
+	fingerprint,extern_ldo_name = "EXTERN_LDO";
+	fingerprint,extern_ldo_num = <34>;
+	fingreprint_ldo-supply = <&ldo34>;
+	fingerprint,extern_vol = <3300000>;
+	fingerprint,poweroff_scheme = <1>; /*1:close ldo ;2:close loadswitch(gpio)*/
+	fingerprint,custom_timing_scheme = <4>; /*1:vdd->1ms->rst/cs; 2:vdd->10ms->rst/cs; 3:vdd->10ms->cs->600us->rst; 4:vdd->rst1/cs1/rst/cs0*/
+};
+
+&sensorhub {
+	gsensor {
+		acc1 {
+			used_int_pin =<1>;
+		};
+		acc2 {
+			used_int_pin =<1>;
+		};
+	};
+	light{
+		als1{
+			als_phone_version = <11>;
+		};
+		als2{
+			als_phone_version = <11>;
+		};
+	};
+};
+&direct_charger {
+	min_dc_bat_vol = <3550>;
+};

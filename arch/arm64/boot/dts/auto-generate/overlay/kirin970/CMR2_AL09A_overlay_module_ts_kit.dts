@@ -1,0 +1,166 @@
+/*ts kit*/
+&ts_kit {
+	compatible = "huawei,ts_kit";
+	bus_type = "i2c";
+	product = "cameron";
+	bus_id = <7>;
+	has_virtualkey = <0>;
+	fpga_flag = <0>;
+	reset_gpio = <&gpio1 7 0>;
+	irq_gpio = <&gpio26 4 0>;
+	parade: touchscreen@24 {
+		status = "ok";
+		compatible = "parade";
+		reg = <0x24>;
+		slave_address = <0x24>;
+		parade,adapter_id = "cyttsp5_i2c_adapter";
+
+		/*project related info*/
+		project_id = "CAME31010"; /* 31: tt41701, 010:eely*/
+		chip_vendor = "parade";
+		chip_name = "tt41701";
+		module_vendor = "eely"; /* first vendor, will rewirte from panel id*/
+
+		parade,pinctrl_set = <1>; /* 0-no set, 1-set by self */
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&gpio212_cfg_func>;
+		pinctrl-1 = <&gpio212_cfg_idle>;
+
+		power_self_ctrl=<1>; /*0-Power is controlled by LCD, 1-Power is self controlled*/
+		/*VCI Power*/
+		parade_vci-supply = <&ldo17>;
+		vci_power_type = <1>; /*0 - gpio control  1 - ldo  2 - boost & gpio*/
+		vci_ldo_value = <3300000>;
+		/*VDDIO Power*/
+		parade_vddio-supply ;
+		vddio_ldo_need_set = <0>;
+		vddio_ldo_value = <1800000>;
+		vddio_gpio_type = <0>;
+		vddio_power_type   = <0>; /*0 - gpio control  1 - ldo  2 - not used*/
+		vddio_gpio_enable = <&gpio2 0 0>;
+		touch_switch_flag = <0>;
+		get_brightness_info_flag = <0>; /* 0 - no need 1 - need */
+		create_project_id_flag = <1>;
+		need_wd_check_status = <1>;
+		support_get_tp_color = <1>;/*0 - no need, 1 - need */
+		glove_mode_supported = <0>;
+		holster_mode_supported = <0>;
+		roi_supported = <0>;
+		need_set_rst_after_iovcc_flag = <1>;
+		need_check_report_descriptor_flag = <1>;
+		parade,is_parade_solution = <1>;
+		parade,direct_proc_cmd = <1>;
+		parade,sleep_in_mode = <0>;/*0-use sleep command, 1-power down, 2-easy wake*/
+		parade,i2c_one_byte = <1>;
+		parade,use_new_oem_structure = <0>;
+		parade,i2c_read_length = <100>;
+		parade,hid_desc_register = <1>;
+		parade,irq_config = <0>;/* 0 - LOW LEVEL  1 - HIGH LEVEL  2 - RAISE EDGE  3 - FALL EDGE*/
+		parade,core_flags = <0>;/* CY_CORE_FLAG_WAKE_ON_GESTURE */
+		parade,mt_flags = <0x18>;/* CY_MT_FLAG_FLIP | CY_MT_FLAG_INV_X | CY_MT_FLAG_INV_Y */
+		parade,slots_max = <32>;
+		parade,easy_wakeup_supported_gestures = <0>;
+		parade,need_delay_after_power_off = <1>;
+		parade,upgrade_ttconfig = <0>;
+		parade,need_upgrade_again = <0>;
+		parade,check_irq_state = <1>;
+		parade,no_need_doing_after_resume = <1>;
+		parade,need_wait_after_cm_test = <1>;/* 1 - need 0 - no need ,for cm test,some waiting is not enough */
+		cy_hid_reset_timeout = <1000>; /* 1000ms, for ESD reset*/
+		parade,abs_min_x = <0>;		parade,abs_max_x = <1599>;	/* ABS_MT_POSITION_X, CY_ABS_MIN_X, CY_ABS_MAX_X, 0, 0 */
+		parade,abs_min_y = <0>;		parade,abs_max_y = <2559>;	/* ABS_MT_POSITION_Y, CY_ABS_MIN_Y, CY_ABS_MAX_Y, 0, 0 */
+		parade,abs_min_p = <0>;		parade,abs_max_p = <1200>;	/* ABS_MT_PRESSURE,   CY_ABS_MIN_P, CY_ABS_MAX_P, 0, 0 */
+		parade,abs_min_w = <0>;		parade,abs_max_w = <255>; 	/* CY_IGNORE_VALUE,   CY_ABS_MIN_W, CY_ABS_MAX_W, 0, 0 */
+		parade,abs_min_t = <0>;		parade,abs_max_t = <15>;	/* ABS_MT_TRACKING_ID,CY_ABS_MIN_T, CY_ABS_MAX_T, 0, 0 */
+		parade,abs_min_mj = <0>;	parade,abs_max_mj = <255>;	/* ABS_MT_TOUCH_MAJOR,0, 255, 0, 0 */
+		parade,abs_min_mn = <0>;	parade,abs_max_mn = <255>;	/* ABS_MT_TOUCH_MINOR,0, 255, 0, 0 */
+		parade,abs_min_or = <0>;	parade,abs_max_or = <127>;	/* ABS_MT_ORIENTATION,-128, 127, 0, 0 */
+	};
+	atmel: touchscreen@4a{
+		compatible = "atmel";
+		y_max_mt = <2560>;
+		x_max_mt = <1600>;
+		y_max = <2560>;
+		x_max = <1600>;
+		chip_name = "mxt1066t2";
+		slave_address = <0x4a>;
+		irq_config = <0>;
+		atmel-vddio-supply;
+		vddio_gpio_enable = <&gpio2 0 0>;
+		atmel-avdd-supply = <&ldo17>;
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&gpio212_cfg_func>;
+		pinctrl-1 = <&gpio212_cfg_idle>;
+		vddio_regulator_type = <0>;
+		vddio_gpio_type = <1>;
+		vci_regulator_type = <1>;
+		vci_gpio_type = <0>;
+		rawdata_get_timeout = <10>;
+		ic_type = <0>;
+		algo_id = <2>;
+		support_get_tp_color = <1>;
+		doze_mode_enable = <0>;
+		CAME55020 {
+			compatible = "CAME55020";/* 55: atmel, 020: truly*/
+			producer = "TRULY";
+			description = "cameron_atmel_truly";
+		};
+	};
+	wacom: touchscreen@0A{
+		compatible = "wacom";
+		slave_address = <0x0A>;
+		doze_mode_enable = <0x0>;
+		ic_type = <0x0>;
+		algo_id = <0>;
+		irq_config = <0x0>;
+		rawdata_get_timeout = <10>;
+		delay_after_reset = <600>;
+
+		/*projectid info*/
+		project_id = "CAME58000";
+		chip_vendor = "wacom";
+		chip_name = "W9015";
+		module_vendor = "ofilm";
+		pen_mode_supported = <1>;
+
+		/*pinctrl*/
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&gpio212_cfg_func>;
+		pinctrl-1 = <&gpio212_cfg_idle>;
+
+		/*vci power*/
+		vci_gpio_type = <0x0>;
+		vci_ctrl_gpio;
+		vci_regulator_type = <0x1>;
+		wacom_vci-supply = <&ldo17>;
+		vci_ldo_value = <3300000>;
+
+		/*vddio power*/
+		vddio_gpio_type = <0x1>;
+		vddio_ctrl_gpio = <&gpio2 0 0>;
+		vddio_regulator_type = <0x0>;
+		vddio_ldo_need_set = <0x0>;
+		wacom_vddio-supply;
+		vddio_ldo_value = <1850000>;
+
+		/*coordinate*/
+		x_max = <1199>;
+		y_max = <1919>;
+		touch_report_x_max = <5415>;
+		touch_report_y_max = <8663>;
+		pen_report_x_max = <13535>;
+		pen_report_y_max = <21657>;
+
+		/*pen pressure*/
+		pen_max_pressure = <4096>;
+
+		/*pid info*/
+		pid_num = <6>;
+		pid = <0x487A 0x487B 0x487C 0x487D 0x487E 0x487F>;
+		pid_panelid =<0x000 0x000 0x001 0x001 0x050 0x050>;
+		pid_lcd_module ="boe", "inx", "boe", "inx", "boe", "inx";
+		pinid_num = <3>;
+		pinid = <0x0 0x2 0x1>;
+		pinid_panelid =<0x000 0x001 0x050>;
+	};
+};

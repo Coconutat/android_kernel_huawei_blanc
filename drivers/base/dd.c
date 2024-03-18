@@ -379,11 +379,12 @@ static int really_probe(struct device *dev, struct device_driver *drv)
 
 re_probe:
 	dev->driver = drv;
-
+#ifdef CONFIG_HISI_ENABLE_PINCTRL_BIND_PINS
 	/* If using pinctrl, bind pins now before probing */
 	ret = pinctrl_bind_pins(dev);
 	if (ret)
 		goto pinctrl_bind_failed;
+#endif
 
 	ret = dma_configure(dev);
 	if (ret)
@@ -447,7 +448,9 @@ dma_failed:
 	if (dev->bus)
 		blocking_notifier_call_chain(&dev->bus->p->bus_notifier,
 					     BUS_NOTIFY_DRIVER_NOT_BOUND, dev);
+#ifdef CONFIG_HISI_ENABLE_PINCTRL_BIND_PINS
 pinctrl_bind_failed:
+#endif
 	device_links_no_driver(dev);
 	devres_release_all(dev);
 	driver_sysfs_remove(dev);
@@ -605,7 +608,7 @@ struct device_attach_data {
 	 */
 	bool have_async;
 };
-
+/*lint -save -e578*/
 static int __device_attach_driver(struct device_driver *drv, void *_data)
 {
 	struct device_attach_data *data = _data;
@@ -644,7 +647,7 @@ static int __device_attach_driver(struct device_driver *drv, void *_data)
 
 	return driver_probe_device(drv, dev);
 }
-
+/*lint -restore*/
 static void __device_attach_async_helper(void *_dev, async_cookie_t cookie)
 {
 	struct device *dev = _dev;
@@ -813,6 +816,9 @@ static void __device_release_driver(struct device *dev, struct device *parent)
 
 	drv = dev->driver;
 	if (drv) {
+		if (driver_allows_async_probing(drv))
+			async_synchronize_full();
+
 		while (device_links_busy(dev)) {
 			device_unlock(dev);
 			if (parent)
@@ -850,9 +856,9 @@ static void __device_release_driver(struct device *dev, struct device *parent)
 			drv->remove(dev);
 
 		device_links_driver_cleanup(dev);
+		dma_deconfigure(dev);
 
 		devres_release_all(dev);
-		dma_deconfigure(dev);
 		dev->driver = NULL;
 		dev_set_drvdata(dev, NULL);
 		if (dev->pm_domain && dev->pm_domain->dismiss)
@@ -916,9 +922,6 @@ void driver_detach(struct device_driver *drv)
 {
 	struct device_private *dev_prv;
 	struct device *dev;
-
-	if (driver_allows_async_probing(drv))
-		async_synchronize_full();
 
 	for (;;) {
 		spin_lock(&drv->p->klist_devices.k_lock);

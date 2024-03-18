@@ -1,0 +1,67 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "COL_L29_VA_overlay.dtsi"
+
+/ {
+	board_id = <6822>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <188>;
+    hisi,boardid = <6 8 2 2>;
+    hisi,boardname = "COL_L29_VB";
+};
+
+&charging_core{
+	iin_nonstd = <1200>;
+	ichg_nonstd = <1000>;
+	status = "ok";
+};
+
+&antenna_board_adc_match{
+	antenna_board_match_range = <525 675>;
+	status = "ok";
+};
+
+	/* audio device beg */
+	&codec_controller {
+		hi64xx_irq@0 {
+			hi6403_codec@0{
+				extern_hs_hifi_ak4376_I2S3 = <0>;/* 1 means extern codec need use I2S3 to supply clk incall */
+				hi6421_0x109_reg_change = <0>;/* 1 means need modify hi6421_0x109 reg*/
+				/*hi6421_0x109_xo_freq_codec_val = <0x01>;*/
+				status = "ok";
+			};
+		};
+	};
+
+	&sound_hi6403 {
+		huawei,extern_codec_type = "none";
+		status = "ok";
+	};
+
+	&audio_hw_config {
+		product_name = "COL-Oversea";
+
+		hifi_info {
+			hifi_chip_type = "none";
+			dynamic_samplerate_support = "false";/* true:support 48~192k, false:default 48k */
+			highperform_lowpower_support = "false";/* music use H-perform, voice use L-power */
+			extern_headset_hifi_enable = "false";
+			dsp_voice_vol_control = "1";/* 1 :need socdsp control volume; 0:platform codec */
+		};
+
+	};
+
+	&extern_dac_vir_dai {
+		status = "disabled";
+	};

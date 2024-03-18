@@ -39,6 +39,8 @@
 #include <linux/sched/signal.h>
 #include <linux/mm_inline.h>
 #include <trace/events/writeback.h>
+#include <linux/blk-cgroup.h>
+#include <linux/hisi/pagecache_debug.h>
 
 #include "internal.h"
 
@@ -359,7 +361,7 @@ static unsigned long highmem_dirtyable_memory(unsigned long total)
  * Returns the global number of pages potentially available for dirty
  * page cache.  This is the base value for the global dirty limits.
  */
-static unsigned long global_dirtyable_memory(void)
+unsigned long global_dirtyable_memory(void)
 {
 	unsigned long x;
 
@@ -1248,11 +1250,6 @@ static void wb_update_dirty_ratelimit(struct dirty_throttle_control *dtc,
 	 */
 	balanced_dirty_ratelimit = div_u64((u64)task_ratelimit * write_bw,
 					   dirty_rate | 1);
-	/*
-	 * balanced_dirty_ratelimit ~= (write_bw / N) <= write_bw
-	 */
-	if (unlikely(balanced_dirty_ratelimit > write_bw))
-		balanced_dirty_ratelimit = write_bw;
 
 	/*
 	 * We could safely do this and return immediately:
@@ -1498,7 +1495,7 @@ static long wb_min_pause(struct bdi_writeback *wb,
 		}
 	}
 
-	pause = HZ * pages / (task_ratelimit + 1);
+	pause = HZ * (u64)pages / (task_ratelimit + 1);
 	if (pause > max_pause) {
 		t = max_pause;
 		pages = task_ratelimit * t / roundup_pow_of_two(HZ);
@@ -1588,6 +1585,19 @@ static void balance_dirty_pages(struct address_space *mapping,
 		unsigned long m_dirty = 0;	/* stop bogus uninit warnings */
 		unsigned long m_thresh = 0;
 		unsigned long m_bg_thresh = 0;
+#ifdef CONFIG_BLK_DEV_THROTTLING
+		struct blkcg_gq *blkg = NULL;
+		unsigned int weight;
+
+		if (unlikely(!mapping->host || !mapping->host->i_sb ||
+			!mapping->host->i_sb->s_bdev))
+			blkg = NULL;
+		else
+			blkg = task_blkg_get(current,
+				mapping->host->i_sb->s_bdev);
+
+		task_blkg_inc_writer(blkg);
+#endif
 
 		/*
 		 * Unstable writes are a feature of certain networked
@@ -1663,6 +1673,10 @@ static void balance_dirty_pages(struct address_space *mapping,
 			if (mdtc)
 				m_intv = dirty_poll_interval(m_dirty, m_thresh);
 			current->nr_dirtied_pause = min(intv, m_intv);
+#ifdef CONFIG_BLK_DEV_THROTTLING
+			task_blkg_dec_writer(blkg);
+			task_blkg_put(blkg);
+#endif
 			break;
 		}
 
@@ -1714,6 +1728,14 @@ static void balance_dirty_pages(struct address_space *mapping,
 		dirty_ratelimit = wb->dirty_ratelimit;
 		task_ratelimit = ((u64)dirty_ratelimit * sdtc->pos_ratio) >>
 							RATELIMIT_CALC_SHIFT;
+
+#ifdef CONFIG_BLK_DEV_THROTTLING
+		weight = blkcg_weight(blkg);
+		if (weight != BLKIO_WEIGHT_DEFAULT)
+			task_ratelimit = (u64)task_ratelimit * weight /
+				BLKIO_WEIGHT_DEFAULT;
+#endif
+
 		max_pause = wb_max_pause(wb, sdtc->wb_dirty);
 		min_pause = wb_min_pause(wb, max_pause,
 					 task_ratelimit, dirty_ratelimit,
@@ -1756,6 +1778,10 @@ static void balance_dirty_pages(struct address_space *mapping,
 				current->nr_dirtied = 0;
 			} else if (current->nr_dirtied_pause <= pages_dirtied)
 				current->nr_dirtied_pause += pages_dirtied;
+#ifdef CONFIG_BLK_DEV_THROTTLING
+			task_blkg_dec_writer(blkg);
+			task_blkg_put(blkg);
+#endif
 			break;
 		}
 		if (unlikely(pause > max_pause)) {
@@ -1785,6 +1811,10 @@ pause:
 		current->nr_dirtied = 0;
 		current->nr_dirtied_pause = nr_dirtied_pause;
 
+#ifdef CONFIG_BLK_DEV_THROTTLING
+		task_blkg_dec_writer(blkg);
+		task_blkg_put(blkg);
+#endif
 		/*
 		 * This is typically equal to (dirty < thresh) and can also
 		 * keep "1000+ dd on a slow USB stick" under control.
@@ -2155,6 +2185,13 @@ int write_cache_pages(struct address_space *mapping,
 		      struct writeback_control *wbc, writepage_t writepage,
 		      void *data)
 {
+	return __write_cache_pages(mapping, wbc, writepage, data, NULL);
+}
+
+int __write_cache_pages(struct address_space *mapping,
+		      struct writeback_control *wbc, writepage_t writepage,
+		      void *data, submit_bio_first_t submit_bio_first)
+{
 	int ret = 0;
 	int done = 0;
 	int error;
@@ -2195,33 +2232,26 @@ retry:
 	while (!done && (index <= end)) {
 		int i;
 
-		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
-			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
+		nr_pages = pagevec_lookup_range_tag(&pvec, mapping, &index, end,
+				tag);
 		if (nr_pages == 0)
 			break;
 
 		for (i = 0; i < nr_pages; i++) {
 			struct page *page = pvec.pages[i];
 
-			/*
-			 * At this point, the page may be truncated or
-			 * invalidated (changing page->mapping to NULL), or
-			 * even swizzled back from swapper_space to tmpfs file
-			 * mapping. However, page->index will not change
-			 * because we have a reference on the page.
-			 */
-			if (page->index > end) {
-				/*
-				 * can't be range_cyclic (1st pass) because
-				 * end == -1 in that case.
-				 */
-				done = 1;
-				break;
-			}
-
 			done_index = page->index;
 
+#ifdef CONFIG_HISI_STORAGE
+			might_sleep();
+			if (!trylock_page(page)) {
+				if (submit_bio_first)
+					(*submit_bio_first)(page, wbc, data);
+				__lock_page(page);
+			}
+#else
 			lock_page(page);
+#endif
 
 			/*
 			 * Page truncated or invalidated. We can freely skip it
@@ -2243,10 +2273,19 @@ continue_unlock:
 			}
 
 			if (PageWriteback(page)) {
-				if (wbc->sync_mode != WB_SYNC_NONE)
+				if (wbc->sync_mode != WB_SYNC_NONE) {
+#ifdef CONFIG_HISI_STORAGE
+					/*
+					 * submit bio before wait_on_page_writeback to avoid deadlock,
+					 * caused by two processes sync different pages of the same file.
+					 */
+					if (submit_bio_first)
+						(*submit_bio_first)(page, wbc, data);
+#endif
 					wait_on_page_writeback(page);
-				else
+				} else {
 					goto continue_unlock;
+				}
 			}
 
 			BUG_ON(PageWriteback(page));
@@ -2436,6 +2475,21 @@ void account_page_dirtied(struct page *page, struct address_space *mapping)
 	if (mapping_cap_account_dirty(mapping)) {
 		struct bdi_writeback *wb;
 
+#ifdef CONFIG_BLK_DEV_THROTTLING
+		struct blkcg_gq *blkg = NULL;
+
+		if (!mapping->host || !mapping->host->i_sb ||
+			!mapping->host->i_sb->s_bdev)
+			goto skip;
+
+		rcu_read_lock();
+		blkg = task_blkcg_gq(current, mapping->host->i_sb->s_bdev);
+		if (blkg)
+			percpu_counter_add_batch(&blkg->nr_dirtied, 1, WB_STAT_BATCH);
+		rcu_read_unlock();
+skip:
+#endif
+
 		inode_attach_wb(inode, page);
 		wb = inode_to_wb(inode);
 
@@ -2446,6 +2500,9 @@ void account_page_dirtied(struct page *page, struct address_space *mapping)
 		inc_wb_stat(wb, WB_DIRTIED);
 		task_io_account_write(PAGE_SIZE);
 		current->nr_dirtied++;
+		if(is_pagecache_stats_enable()) {
+			stat_inc_dirty_pages_count();
+		}
 		this_cpu_inc(bdp_ratelimits);
 	}
 }
@@ -2464,6 +2521,9 @@ void account_page_cleaned(struct page *page, struct address_space *mapping,
 		dec_zone_page_state(page, NR_ZONE_WRITE_PENDING);
 		dec_wb_stat(wb, WB_RECLAIMABLE);
 		task_io_account_cancelled_write(PAGE_SIZE);
+		if(is_pagecache_stats_enable()) {
+			stat_dec_dirty_pages_count();
+		}
 	}
 }
 

@@ -1494,6 +1494,13 @@ static int packet_rcv_fanout(struct sk_buff *skb, struct net_device *dev,
 		idx = fanout_demux_rollover(f, skb, idx, true, num);
 
 	po = pkt_sk(f->arr[idx]);
+
+	if (po->prot_hook.func == NULL) {
+		pr_err("packet_rcv_fanout prot_hook.func null.");
+		kfree_skb(skb);
+		return 0;
+	}
+
 	return po->prot_hook.func(skb, dev, &po->prot_hook, orig_dev);
 }
 
@@ -2433,7 +2440,7 @@ static void tpacket_destruct_skb(struct sk_buff *skb)
 		void *ph;
 		__u32 ts;
 
-		ph = skb_zcopy_get_nouarg(skb);
+		ph = skb_shinfo(skb)->destructor_arg;
 		packet_dec_pending(&po->tx_ring);
 
 		ts = __packet_set_timestamp(po, ph, skb);
@@ -2499,7 +2506,7 @@ static int tpacket_fill_skb(struct packet_sock *po, struct sk_buff *skb,
 	skb->priority = po->sk.sk_priority;
 	skb->mark = po->sk.sk_mark;
 	sock_tx_timestamp(&po->sk, sockc->tsflags, &skb_shinfo(skb)->tx_flags);
-	skb_zcopy_set_nouarg(skb, ph.raw);
+	skb_shinfo(skb)->destructor_arg = ph.raw;
 
 	skb_reserve(skb, hlen);
 	skb_reset_network_header(skb);

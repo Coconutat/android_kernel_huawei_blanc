@@ -1419,8 +1419,11 @@ int pci_setup_device(struct pci_dev *dev)
 	pci_dev_assign_slot(dev);
 	/* Assume 32-bit PCI; let 64-bit PCI cards (which are far rarer)
 	   set this higher, assuming the system even supports it.  */
+#ifdef CONFIG_PCIE_KIRIN
+	dev->dma_mask = DMA_BIT_MASK(64);/*lint !e598 !e648*/
+#else
 	dev->dma_mask = 0xffffffff;
-
+#endif
 	dev_set_name(&dev->dev, "%04x:%02x:%02x.%d", pci_domain_nr(dev->bus),
 		     dev->bus->number, PCI_SLOT(dev->devfn),
 		     PCI_FUNC(dev->devfn));
@@ -1429,8 +1432,13 @@ int pci_setup_device(struct pci_dev *dev)
 	dev->revision = class & 0xff;
 	dev->class = class >> 8;		    /* upper 3 bytes */
 
+#if !defined(CONFIG_PCIE_KIRIN) || defined(CONFIG_KIRIN_PCIE_TEST)
 	dev_printk(KERN_DEBUG, &dev->dev, "[%04x:%04x] type %02x class %#08x\n",
 		   dev->vendor, dev->device, dev->hdr_type, dev->class);
+#else
+	dev_printk(KERN_DEBUG, &dev->dev, "type %02x class %#08x\n",
+		   dev->hdr_type, dev->class);
+#endif
 
 	/* need to have dev->class ready */
 	dev->cfg_size = pci_cfg_space_size(dev);
@@ -2093,7 +2101,11 @@ void pci_device_add(struct pci_dev *dev, struct pci_bus *bus)
 	set_dev_node(&dev->dev, pcibus_to_node(bus));
 	dev->dev.dma_mask = &dev->dma_mask;
 	dev->dev.dma_parms = &dev->dma_parms;
+#ifdef CONFIG_PCIE_KIRIN
+	dev->dev.coherent_dma_mask = DMA_BIT_MASK(64);/*lint !e598 !e648*/
+#else
 	dev->dev.coherent_dma_mask = 0xffffffffull;
+#endif
 
 	pci_set_dma_max_seg_size(dev, 65536);
 	pci_set_dma_seg_boundary(dev, 0xffffffff);

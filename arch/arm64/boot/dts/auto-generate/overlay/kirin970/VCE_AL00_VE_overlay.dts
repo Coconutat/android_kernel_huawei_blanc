@@ -1,0 +1,34 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "VCE_AL00_VD_overlay.dtsi"
+
+/ {
+	board_id = <6981>;
+};
+&rootparam {
+        hisi,dtbo_idx = <12>;
+    hisi,boardid = <6 9 8 1>;
+    hisi,boardname = "VCE_AL00_VE";
+};
+
+&huawei_imx586 {
+	status = "ok";
+};
+
+&huawei_imx350 {
+	status = "disable";
+};
+
+&huawei_ov20880 {
+	status = "disable";
+};
+

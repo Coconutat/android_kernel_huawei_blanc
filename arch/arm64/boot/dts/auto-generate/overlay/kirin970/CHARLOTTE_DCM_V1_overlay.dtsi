@@ -1,0 +1,107 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "CHARLOTTE_LX9_V3_overlay.dtsi"
+
+/ {
+        board_id = <6524>;
+};
+
+&rootparam {
+    hisi,boardid = <6 5 2 4>;
+    hisi,boardname = "CHARLOTTE_DCM_V1";
+};
+
+
+&fastboot_pmic {
+       hisilicon,init-reg-num = <0>;
+       hisilicon,init-reg-addrs = <0>;
+       hisilicon,init-reg-vals  = <0>;
+};
+
+&bcm_wifi {
+       wifi_fw_test_name = "/vendor/firmware/fw_bcm4359_nonsig.bin";
+       wifi_fw_ap_name = "/vendor/firmware/fw_bcm4359_apsta_hw.bin";
+       wifi_fw_name = "/vendor/firmware/fw_bcm4359_hw.bin";
+       wifi_nvram_name = "/vendor/firmware/nvram4359_hw_charlotte_dcm_v1.txt";
+       bcn_timeout = <0x5>;
+};
+    &sensorhub{
+                sar{
+                        sar1{
+                               status = "ok";
+                        };
+                        sar2{
+                                status = "ok";
+                        };
+                };
+        };
+&sensorhub_ext_config {
+		docom_step_counter = "enabled";
+};
+&amba {
+    i2c@FDF0D000 {
+        nfc@28 {
+            status = "disabled";
+        };
+        nfc2@28 {
+            status = "ok";
+            nfc_on_type = "hi6421v600_pmic";
+            nfc_card_num = <0x2>;
+            clk_status = "xtal";
+            sony,nfc_int = <&gpio25 1 0>;
+            sony,nfc_ven = <>;
+            sony,nfc_wake = <>;
+            sony,nfc_rst = <&gpio3 6 0>;
+            pinctrl-1 = <&gpio201_pmx_idle>;
+            pinctrl-0 = <&gpio201_pmx_func>;
+            pinctrl-names = "default","idle";
+            reg = <0x28>;
+            nfc_chip_type = "cxd22xx";
+            nfc_ese_type = "felica";
+        };
+    };
+};
+&coul_core {
+	basp_policy = <
+		3 100000 60  0  0  100  0 920001032
+		2 70000 80  0  0  100  0 920001031
+		1 40000 90  0  0  100  0 920001029
+		0 0     0   0  0  100  0 0
+	>;
+	batt_backup_nv_flag = <1>;
+	need_restore_cycle_flag = <1>;
+	status = "ok";
+};
+&huawei_charger {
+	support_usb_nonstandard_ico = <0>;
+	support_standard_ico = <0>;
+	status = "ok";
+};
+&charging_core {
+	status = "ok";
+	iin_ac = <1800>;
+};
+&direct_charger {
+	max_current_for_none_standard_cable = <1800>;
+	status = "ok";
+};
+&usb_short_circuit_protect {
+	status = "disabled";
+};
+
+&power_thermalzone {
+	status = "disabled";
+};
+
+&nfc_exist {
+	hisee_exist_flag = "0";
+	status = "ok";
+};
+

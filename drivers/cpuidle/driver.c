@@ -354,3 +354,45 @@ void cpuidle_driver_unref(void)
 
 	spin_unlock(&cpuidle_driver_lock);
 }
+
+#ifdef CONFIG_HISI_CPUIDLE_LP_MODE
+static int lp_mode_enabled = 0;
+int get_lp_mode(void)
+{
+	return lp_mode_enabled;
+}
+
+void cpuidle_switch_to_lp_mode(int enabled)
+{
+	int cpu, i;
+	struct cpuidle_driver *drv = NULL;
+
+	cpuidle_pause();
+
+	spin_lock(&cpuidle_driver_lock);
+
+	for_each_possible_cpu(cpu) {
+		drv = per_cpu(cpuidle_drivers, cpu);
+		if (drv == NULL)
+			continue;
+		if (cpumask_first(drv->cpumask) != cpu)
+			continue;
+
+		/* state0 will be ignored */
+		for (i = 1; i < drv->state_count; i++) {
+			if (enabled && drv->states[i].lp_exit_latency > drv->states[i].exit_latency)
+				continue;
+
+			if (!enabled && drv->states[i].lp_exit_latency < drv->states[i].exit_latency)
+				continue;
+
+			swap(drv->states[i].lp_exit_latency, drv->states[i].exit_latency);
+			swap(drv->states[i].lp_target_residency, drv->states[i].target_residency);
+		}
+	}
+	lp_mode_enabled = enabled;
+	spin_unlock(&cpuidle_driver_lock);
+
+	cpuidle_resume();
+}
+#endif // CONFIG_HISI_CPUIDLE_LP_MODE

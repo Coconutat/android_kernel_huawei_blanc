@@ -101,10 +101,17 @@
 
 #define SO_COOKIE		57
 
+
 #define SCM_TIMESTAMPING_PKTINFO	58
 
 #define SO_PEERGROUPS		59
 
 #define SO_ZEROCOPY		60
+
+#ifdef CONFIG_HUAWEI_XENGINE
+#define SO_XENGINE_PROXYUID			100
+#define SO_XENGINE_SOCKFLAG			101
+#endif
+
 
 #endif /* __ASM_GENERIC_SOCKET_H */

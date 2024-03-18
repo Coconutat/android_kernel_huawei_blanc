@@ -1,0 +1,22 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "BKL_AL00_V1_config.dtsi"
+/include/ "BKL_TL20_V3_pin.dtsi"
+/include/ "BKL_TL20_V3_sec_pin.dtsi"
+/include/ "BKL_TL20_V3_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 9 0 6>;
+	hisi,boardname = "BKL_TL20_V3";
+	hisi,modem_id = <0x39602000>;
+	hisi,product_name = "BKL-TL20";
+};

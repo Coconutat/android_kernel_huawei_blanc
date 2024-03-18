@@ -1,0 +1,34 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "EMILY_TUGL_V1_config.dtsi"
+/include/ "EMILY_TUGL_V3_pin.dtsi"
+/include/ "EMILY_TUGL_V3_sec_pin.dtsi"
+/include/ "EMILY_TUGL_V3_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 5 0 6>;
+	hisi,boardname = "EMILY_TUGL_V3";
+	hisi,product_id = <0x39021800>;
+	hisi,modem_id = <0x39021800>;
+	hisi,product_name = "EMILY-AL00";
+
+	sensorhub{
+		sar_sensor:sar{
+			sar1{
+				status = "disabled";
+			};
+			sar2{
+				status = "disabled";
+			};
+		};
+	};
+};

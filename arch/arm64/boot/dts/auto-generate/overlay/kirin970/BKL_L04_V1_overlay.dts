@@ -1,0 +1,101 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "BKL_L09_DELETE9688_VN2_overlay.dtsi"
+
+/ {
+	board_id = <6921>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <115>;
+    hisi,boardid = <6 9 2 1>;
+    hisi,boardname = "BKL_L04_V1";
+};
+
+	&huawei_lcd_panel {
+		gpio_id = <9 8>;
+		gpio_cfg_addr = <0xE896CF04 0xE896CF00>;
+		product_id = <3003>;
+	};
+&amba {
+	i2c@FFD6A000 {
+		hi6523_charger_i2c6@6B{
+			status = "ok";
+		};
+	};
+};
+
+&amba {
+	i2c@FDF0C000 {
+		nfc@28 {
+			pn547,ven = <&gpio16 7 0>;
+			pinctrl-names = "default","idle";
+			pinctrl-0 = <&gpio135_pmx_func &gpio201_pmx_func &gpio030_cfg_func &gpio135_cfg_func &gpio201_cfg_func>;
+			pinctrl-1 = <&gpio135_pmx_idle &gpio201_pmx_idle &gpio030_cfg_idle &gpio135_cfg_idle &gpio201_cfg_idle>;
+		};
+	};
+};
+
+	&nfc_exist {
+		hisee_exist_flag = "0";
+		status = "ok";
+	};
+
+	&direct_charge_ps {
+		bst_ctrl = <&gpio28 4 0>;
+		status = "ok";
+	};
+/**disable hisi1102 config*/
+	&hi1102 {
+		status = "disabled";
+	};
+	&hisi_wifi {
+		status = "disabled";
+	};
+	&hisi_bfgx {
+		status = "disabled";
+	};
+	&hisi_cust_cfg {
+		status = "disabled";
+	};
+	&hisi_gps {
+		status = "disabled";
+	};
+	/** disable hisi 1102 config*/
+
+	&gps_power{
+		broadcom_config,ic_type="bcm4774";
+	};
+	&hw_connectivity {
+		chip_type = "bcm43xx";
+	};
+	/** irda config begin*/
+	&irda {
+		irda,chiptype = <3>;		/*hi6403*/
+	};
+	&audio_hw_config {
+		analog_earpiece_enable = "true";
+		audio_capability {
+			irda_support = "true";
+			irda_dly = "50000";/*default delay 50000us*/
+			irda_temp_th = "10000";/*set temperature threshold 10 degree*/
+		};
+	};
+	&codec_controller {
+		hi64xx_irq: hi64xx_irq@0 {
+			hi6403_codec: hi6403_codec@0{
+				hisilicon,ir_gpio=<&gpio17 1 0>;
+			};
+		};
+	};
+/**irda config end*/
+

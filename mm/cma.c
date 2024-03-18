@@ -38,6 +38,11 @@
 #include <trace/events/cma.h>
 
 #include "cma.h"
+#include "internal.h"
+
+#ifdef CONFIG_HISI_CMA_DEBUG
+#include <linux/hisi/hisi_cma_debug.h>
+#endif
 
 struct cma cma_areas[MAX_CMA_AREAS];
 unsigned cma_area_count;
@@ -149,7 +154,7 @@ static int __init cma_init_reserved_areas(void)
 {
 	int i;
 
-	for (i = 0; i < cma_area_count; i++) {
+	for (i = 0; i < cma_area_count; i++) { /*lint !e574*/
 		int ret = cma_activate_area(&cma_areas[i]);
 
 		if (ret)
@@ -160,6 +165,9 @@ static int __init cma_init_reserved_areas(void)
 }
 core_initcall(cma_init_reserved_areas);
 
+#ifdef CONFIG_HISI_KERNELDUMP
+extern void kdump_reserved_addr_save(phys_addr_t base, phys_addr_t size);
+#endif
 /**
  * cma_init_reserved_mem() - create custom contiguous area from reserved memory
  * @base: Base address of the reserved area
@@ -215,6 +223,10 @@ int __init cma_init_reserved_mem(phys_addr_t base, phys_addr_t size,
 	*res_cma = cma;
 	cma_area_count++;
 	totalcma_pages += (size / PAGE_SIZE);
+
+#ifdef CONFIG_HISI_KERNELDUMP
+	kdump_reserved_addr_save(base, size);
+#endif
 
 	return 0;
 }
@@ -274,7 +286,7 @@ int __init cma_declare_contiguous(phys_addr_t base,
 	 * you couldn't get a contiguous memory, which is not what we want.
 	 */
 	alignment = max(alignment,  (phys_addr_t)PAGE_SIZE <<
-			  max_t(unsigned long, MAX_ORDER - 1, pageblock_order));
+			  max_t(unsigned long, MAX_ORDER - 1, pageblock_order)); /*lint !e666*/
 	base = ALIGN(base, alignment);
 	size = ALIGN(size, alignment);
 	limit &= ~(alignment - 1);
@@ -392,20 +404,24 @@ static inline void cma_debug_show_areas(struct cma *cma) { }
  * @cma:   Contiguous memory region for which the allocation is performed.
  * @count: Requested number of pages.
  * @align: Requested alignment of pages (in PAGE_SIZE order).
+ * @no_warn: Avoid printing message about failed allocation.
  *
  * This function allocates part of contiguous memory on specific
  * contiguous memory area.
  */
 struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
-		       gfp_t gfp_mask)
+		       bool no_warn)
 {
 	unsigned long mask, offset;
-	unsigned long pfn = -1;
+	unsigned long pfn = -1; /*lint !e570*/
 	unsigned long start = 0;
 	unsigned long bitmap_maxno, bitmap_no, bitmap_count;
 	struct page *page = NULL;
 	int ret = -ENOMEM;
-
+#ifdef CONFIG_HISI_KERNELDUMP
+	struct page *tmp_page = NULL;
+	u64 k = 0;
+#endif
 	if (!cma || !cma->count)
 		return NULL;
 
@@ -430,6 +446,10 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 				offset);
 		if (bitmap_no >= bitmap_maxno) {
 			mutex_unlock(&cma->lock);
+#ifdef CONFIG_HISI_CMA_DEBUG
+			pr_info("bitmap_no %ld >= bitmap_maxno %ld\n", bitmap_no, bitmap_maxno);
+			ret = -ENOMEM;
+#endif
 			break;
 		}
 		bitmap_set(cma->bitmap, bitmap_no, bitmap_count);
@@ -443,7 +463,7 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 		pfn = cma->base_pfn + (bitmap_no << cma->order_per_bit);
 		mutex_lock(&cma_mutex);
 		ret = alloc_contig_range(pfn, pfn + count, MIGRATE_CMA,
-					 gfp_mask);
+					GFP_KERNEL | (no_warn ? __GFP_NOWARN : 0));
 		mutex_unlock(&cma_mutex);
 		if (ret == 0) {
 			page = pfn_to_page(pfn);
@@ -460,15 +480,36 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 		start = bitmap_no + mask + 1;
 	}
 
+#ifdef CONFIG_HISI_CMA_DEBUG
+	if (ret) {
+		dump_cma_page(cma, count, mask, offset,
+				bitmap_maxno, bitmap_count);
+		dump_cma_mem_info(); /*if cma_alloc fail, dump the cma mem info*/
+	} else {
+		record_cma_alloc_info(cma, pfn,count); /*if cma_alloc success, record it*/
+	}
+#endif
+
 	trace_cma_alloc(pfn, page, count, align);
 
-	if (ret && !(gfp_mask & __GFP_NOWARN)) {
-		pr_info("%s: alloc failed, req-size: %zu pages, ret: %d\n",
+	if (ret && !no_warn) {
+		pr_err("%s: alloc failed, req-size: %zu pages, ret: %d\n",
 			__func__, count, ret);
 		cma_debug_show_areas(cma);
 	}
 
 	pr_debug("%s(): returned %p\n", __func__, page);
+
+#ifdef CONFIG_HISI_KERNELDUMP
+    if (page) {
+		tmp_page = page;
+		for (k = 0; k < count; k++) {
+			SetPageMemDump(tmp_page);
+			tmp_page++;
+		}
+	}
+#endif
+
 	return page;
 }
 
@@ -489,7 +530,6 @@ bool cma_release(struct cma *cma, const struct page *pages, unsigned int count)
 	if (!cma || !pages)
 		return false;
 
-	pr_debug("%s(page %p)\n", __func__, (void *)pages);
 
 	pfn = page_to_pfn(pages);
 
@@ -501,6 +541,9 @@ bool cma_release(struct cma *cma, const struct page *pages, unsigned int count)
 	free_contig_range(pfn, count);
 	cma_clear_bitmap(cma, pfn, count);
 	trace_cma_release(pfn, pages, count);
+#ifdef CONFIG_HISI_CMA_DEBUG
+	record_cma_release_info(cma,  pfn, count);
+#endif
 
 	return true;
 }

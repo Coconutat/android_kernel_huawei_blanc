@@ -55,6 +55,13 @@
 #include <linux/seq_file.h>
 #include <trace/events/skb.h>
 #include "udp_impl.h"
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+#include <hwnet/ipv4/wifi_delayst.h>
+#endif
+
+#ifdef CONFIG_HW_HIDATA_HIMOS
+#include <huawei_platform/net/himos/hw_himos_udp_stats.h>
+#endif
 
 static bool udp6_lib_exact_dif_match(struct net *net, struct sk_buff *skb)
 {
@@ -65,6 +72,10 @@ static bool udp6_lib_exact_dif_match(struct net *net, struct sk_buff *skb)
 #endif
 	return false;
 }
+
+#ifdef CONFIG_MPTCP_EPC
+#include <net/mptcp_epc.h>
+#endif
 
 static u32 udp6_ehashfn(const struct net *net,
 			const struct in6_addr *laddr,
@@ -358,6 +369,9 @@ int udpv6_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
 	int is_udplite = IS_UDPLITE(sk);
 	bool checksum_valid = false;
 	int is_udp4;
+#ifdef CONFIG_MPTCP_EPC
+	bool is_mutp = false;
+#endif
 
 	if (flags & MSG_ERRQUEUE)
 		return ipv6_recv_error(sk, msg, len, addr_len);
@@ -374,6 +388,10 @@ try_again:
 
 	ulen = udp6_skb_len(skb);
 	copied = len;
+
+#ifdef CONFIG_MPTCP_EPC
+	is_mutp = mutp_decode_recv(skb, (skb->protocol == htons(ETH_P_IP)), &off);
+#endif
 	if (copied > ulen - off)
 		copied = ulen - off;
 	else if (copied < ulen)
@@ -425,6 +443,9 @@ try_again:
 		else
 			UDP6_INC_STATS(sock_net(sk), UDP_MIB_INDATAGRAMS,
 				       is_udplite);
+#ifdef CONFIG_HW_HIDATA_HIMOS
+		himos_udp_stats(sk, ulen, 0);
+#endif
 	}
 
 	sock_recv_ts_and_drops(msg, sk, skb);
@@ -437,8 +458,12 @@ try_again:
 		sin6->sin6_flowinfo = 0;
 
 		if (is_udp4) {
+#ifndef CONFIG_MPTCP_EPC
 			ipv6_addr_set_v4mapped(ip_hdr(skb)->saddr,
 					       &sin6->sin6_addr);
+#else
+			mutp_rewrite_msg_addrv6(is_mutp, skb, sin6);
+#endif
 			sin6->sin6_scope_id = 0;
 		} else {
 			sin6->sin6_addr = ipv6_hdr(skb)->saddr;
@@ -464,7 +489,11 @@ try_again:
 	err = copied;
 	if (flags & MSG_TRUNC)
 		err = ulen;
-
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+	if(DELAY_STATISTIC_SWITCH_ON) {
+		delay_record_rcv_combine(skb,sk,TP_SKB_TYPE_UDP);
+	}
+#endif
 	skb_consume_udp(sk, skb, peeking ? -err : err);
 	return err;
 
@@ -609,7 +638,9 @@ static int udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 		encap_rcv = ACCESS_ONCE(up->encap_rcv);
 		if (encap_rcv) {
 			int ret;
-
+#ifdef CONFIG_HW_HIDATA_HIMOS
+			int len = skb->len;
+#endif
 			/* Verify checksum before giving to encap */
 			if (udp_lib_checksum_complete(skb))
 				goto csum_error;
@@ -619,6 +650,9 @@ static int udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 				__UDP_INC_STATS(sock_net(sk),
 						UDP_MIB_INDATAGRAMS,
 						is_udplite);
+#ifdef CONFIG_HW_HIDATA_HIMOS
+				himos_udp_stats(sk, len, 0);
+#endif
 				return -ret;
 			}
 		}
@@ -1050,7 +1084,9 @@ static int udp_v6_send_skb(struct sk_buff *skb, struct flowi6 *fl6)
 	__wsum csum = 0;
 	int offset = skb_transport_offset(skb);
 	int len = skb->len - offset;
-
+#ifdef CONFIG_HW_HIDATA_HIMOS
+	int skb_len = skb->len;
+#endif
 	/*
 	 * Create a UDP header
 	 */
@@ -1088,6 +1124,9 @@ send:
 	} else {
 		UDP6_INC_STATS(sock_net(sk),
 			       UDP_MIB_OUTDATAGRAMS, is_udplite);
+#ifdef CONFIG_HW_HIDATA_HIMOS
+		himos_udp_stats(sk, 0, skb_len);
+#endif
 	}
 	return err;
 }
@@ -1350,7 +1389,16 @@ back_from_confirm:
 				   msg->msg_flags, &sockc);
 		err = PTR_ERR(skb);
 		if (!IS_ERR_OR_NULL(skb))
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+		{
+			if(DELAY_STATISTIC_SWITCH_ON) {
+				delay_record_first_combine(sk,skb,TP_SKB_DIRECT_SND,TP_SKB_TYPE_UDP);
+			}
+#endif
 			err = udp_v6_send_skb(skb, &fl6);
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+		}
+#endif
 		goto release_dst;
 	}
 

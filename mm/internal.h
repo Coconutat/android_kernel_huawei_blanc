@@ -40,6 +40,22 @@ void page_writeback_init(void);
 
 int do_swap_page(struct vm_fault *vmf);
 
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+static inline bool vma_has_changed(struct vm_fault *vmf)
+{
+	int ret = RB_EMPTY_NODE(&vmf->vma->vm_rb);
+	unsigned int seq = READ_ONCE(vmf->vma->vm_sequence.sequence);
+
+	/*
+	 * Matches both the wmb in write_seqlock_{begin,end}() and
+	 * the wmb in vma_rb_erase().
+	 */
+	smp_rmb();
+
+	return ret || seq != vmf->sequence;
+}
+#endif /* CONFIG_SPECULATIVE_PAGE_FAULT */
+
 void free_pgtables(struct mmu_gather *tlb, struct vm_area_struct *start_vma,
 		unsigned long floor, unsigned long ceiling);
 
@@ -66,6 +82,45 @@ static inline unsigned long ra_submit(struct file_ra_state *ra,
 	return __do_page_cache_readahead(mapping, filp,
 					ra->start, ra->size, ra->async_size);
 }
+
+#ifdef CONFIG_HISI_PAGECACHE_HELPER
+unsigned long pch_shrink_read_pages(unsigned long nr);
+unsigned long pch_shrink_mmap_pages(unsigned long nr);
+unsigned long pch_shrink_mmap_async_pages(unsigned long nr);
+void pch_mmap_readextend(struct vm_area_struct *vma,
+                                   struct file_ra_state *ra,
+                                   struct file *file,
+                                   pgoff_t offset);
+extern void pch_read_around(struct file_ra_state *ra,
+                                  struct address_space *mapping,
+                                  struct file *file,
+                                  pgoff_t offset);
+#else
+static inline unsigned long pch_shrink_read_pages(unsigned long nr)
+{
+        return nr;
+}
+
+static inline unsigned long pch_shrink_mmap_pages(unsigned long nr)
+{
+        return nr;
+}
+
+static inline unsigned long pch_shrink_mmap_async_pages(unsigned long nr)
+{
+        return nr;
+}
+
+static inline void pch_mmap_readextend(struct vm_area_struct *vma,
+                                   struct file_ra_state *ra,
+                                   struct file *file,
+                                   pgoff_t offset) {}
+
+static inline void pch_read_around(struct file_ra_state *ra,
+                                  struct address_space *mapping,
+                                  struct file *file, pgoff_t offset) {}
+#endif
+
 
 /*
  * Turn a non-refcounted page (->_refcount == 0) into refcounted with
@@ -212,7 +267,8 @@ unsigned long
 isolate_migratepages_range(struct compact_control *cc,
 			   unsigned long low_pfn, unsigned long end_pfn);
 int find_suitable_fallback(struct free_area *area, unsigned int order,
-			int migratetype, bool only_stealable, bool *can_steal);
+			int migratetype, bool only_stealable, bool *can_steal,
+			gfp_t gfp_mask);
 
 #endif
 

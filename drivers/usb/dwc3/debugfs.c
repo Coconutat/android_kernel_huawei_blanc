@@ -32,6 +32,7 @@
 #include "gadget.h"
 #include "io.h"
 #include "debug.h"
+#include "dwc3-hisi-debugfs.h"
 
 #define dump_register(nm)				\
 {							\
@@ -807,6 +808,8 @@ void dwc3_debugfs_init(struct dwc3 *dwc)
 
 		dwc3_debugfs_create_endpoint_dirs(dwc, root);
 	}
+
+	dwc3_hisi_debugfs_init(dwc, root);
 }
 
 void dwc3_debugfs_exit(struct dwc3 *dwc)

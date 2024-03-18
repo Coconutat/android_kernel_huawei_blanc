@@ -1,0 +1,28 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "NEO_TUGL_V0_config.dtsi"
+
+/ {
+	hisi,boardid = <6 4 8 1>;
+	hisi,boardname = "NEO_TUGL_V1";
+	hisi,modem_id = <0x39040000>;
+	hisi,product_id = <0x39040000>;
+	hisi,product_name = "NEO-AL00";
+	sensorhub{
+		sar_sensor:sar{
+			sar1{
+				status = "disabled";
+			};
+			sar2{
+				status = "disabled";
+			};
+		};
+	};
+};

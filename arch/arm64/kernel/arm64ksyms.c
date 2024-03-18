@@ -26,7 +26,6 @@
 #include <linux/syscalls.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
-#include <linux/arm-smccc.h>
 #include <linux/kprobes.h>
 
 #include <asm/checksum.h>
@@ -42,7 +41,8 @@ EXPORT_SYMBOL(__arch_copy_in_user);
 
 	/* physical memory */
 EXPORT_SYMBOL(memstart_addr);
-
+extern s64 phystart_addr;
+EXPORT_SYMBOL(phystart_addr);
 	/* string / mem functions */
 EXPORT_SYMBOL(strchr);
 EXPORT_SYMBOL(strrchr);
@@ -52,6 +52,7 @@ EXPORT_SYMBOL(strlen);
 EXPORT_SYMBOL(strnlen);
 EXPORT_SYMBOL(memset);
 EXPORT_SYMBOL(memcpy);
+EXPORT_SYMBOL(memcpy_reg);
 EXPORT_SYMBOL(memmove);
 EXPORT_SYMBOL(__memset);
 EXPORT_SYMBOL(__memcpy);
@@ -71,7 +72,3 @@ EXPORT_SYMBOL(test_and_change_bit);
 EXPORT_SYMBOL(_mcount);
 NOKPROBE_SYMBOL(_mcount);
 #endif
-
-	/* arm-smccc */
-EXPORT_SYMBOL(__arm_smccc_smc);
-EXPORT_SYMBOL(__arm_smccc_hvc);

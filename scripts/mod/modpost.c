@@ -645,7 +645,7 @@ static void handle_modversions(struct module *mod, struct elf_info *info,
 			       info->sechdrs[sym->st_shndx].sh_offset -
 			       (info->hdr->e_type != ET_REL ?
 				info->sechdrs[sym->st_shndx].sh_addr : 0);
-			crc = TO_NATIVE(*crcp);
+			crc = *crcp;
 		}
 		sym_update_crc(symname + strlen(CRC_PFX), mod, crc,
 				export);
@@ -953,6 +953,7 @@ static const char *const head_sections[] = { ".head.text*", NULL };
 static const char *const linker_symbols[] =
 	{ "__init_begin", "_sinittext", "_einittext", NULL };
 static const char *const optim_symbols[] = { "*.constprop.*", NULL };
+static const char *const cfi_symbols[] = { "*.cfi", NULL };
 
 enum mismatch {
 	TEXT_TO_ANY_INIT,
@@ -1211,7 +1212,11 @@ static int secref_whitelist(const struct sectioncheck *mismatch,
 	    match(tosec, init_sections) &&
 	    match(fromsym, optim_symbols))
 		return 0;
-
+	/* Check for pattern 6 */
+	if (match(fromsec, text_sections) &&
+	    match(tosec, init_exit_sections) &&
+	    match(tosym, cfi_symbols))
+		return 0;
 	return 1;
 }
 
@@ -2170,7 +2175,7 @@ static void add_intree_flag(struct buffer *b, int is_intree)
 /* Cannot check for assembler */
 static void add_retpoline(struct buffer *b)
 {
-	buf_printf(b, "\n#ifdef CONFIG_RETPOLINE\n");
+	buf_printf(b, "\n#ifdef RETPOLINE\n");
 	buf_printf(b, "MODULE_INFO(retpoline, \"Y\");\n");
 	buf_printf(b, "#endif\n");
 }

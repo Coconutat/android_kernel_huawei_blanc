@@ -1,0 +1,43 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "ALPS_LX9_V3_CS_2LANE_overlay.dtsi"
+
+/ {
+	board_id = <6416>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <80>;
+    hisi,boardid = <6 4 1 6>;
+    hisi,boardname = "ALPS_LX9_V4_CS_D1";
+};
+
+	&amba {
+		i2c@FFD6A000 {
+			hi6523_charger_i2c6@6B{
+				status = "ok";
+				fcp_support = <0>;
+				scp_support = <0>;
+				scp_need_extra_power = <0>;
+			};
+			fsa9685_i2c6@25{
+				status = "ok";
+			};
+		};
+	};
+	&devcheck {
+		usb_switch = <3>;
+		status = "ok";
+	};
+	&hisi_usb {
+		set_hi_impedance = <0x1>;
+	};

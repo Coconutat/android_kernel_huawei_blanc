@@ -1,0 +1,17 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "VCE_TL00_VC_config.dtsi"
+
+/ {
+	hisi,boardid = <6 9 7 7>;
+	hisi,boardname = "VCE_TL00_VD";
+	hisi,modem_id = <0X39651000>;
+	hisi,product_name = "VCE-TL00";
+};

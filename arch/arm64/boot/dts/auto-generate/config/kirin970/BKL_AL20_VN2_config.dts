@@ -1,0 +1,25 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "lcdkit/bkl_vn2/devkit_lcd.dtsi"
+/include/ "BKL_AL20_VN1_config.dtsi"
+/include/ "BKL_AL20_VN2_pin.dtsi"
+/include/ "BKL_AL20_VN2_sec_pin.dtsi"
+/include/ "BKL_AL20_VN2_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 9 0 9>;
+	hisi,boardname = "BKL_AL20_VN2";
+	hisi,modem_id = <0x39605400>;
+	huawei_lcd_panel: huawei,lcd_panel {
+		product_id = <3002>;
+	};
+};

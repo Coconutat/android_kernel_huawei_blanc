@@ -1,0 +1,23 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "EMILY_LX9_V4_overlay.dtsi"
+
+/ {
+        board_id = <6513>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <104>;
+    hisi,boardid = <6 5 1 3>;
+    hisi,boardname = "EMILY_LX9_VN1";
+};
+

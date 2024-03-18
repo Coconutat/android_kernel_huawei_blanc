@@ -19,6 +19,7 @@
 
 #include <linux/cpu.h>
 #include <linux/cpufreq.h>
+#include <linux/cpufreq_times.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/init.h>
@@ -30,6 +31,9 @@
 #include <linux/syscore_ops.h>
 #include <linux/tick.h>
 #include <trace/events/power.h>
+#ifdef CONFIG_HISI_DRG
+#include <linux/hisi/hisi_drg.h>
+#endif
 
 static LIST_HEAD(cpufreq_policy_list);
 
@@ -90,6 +94,9 @@ static void cpufreq_governor_limits(struct cpufreq_policy *policy);
  */
 static BLOCKING_NOTIFIER_HEAD(cpufreq_policy_notifier_list);
 static struct srcu_notifier_head cpufreq_transition_notifier_list;
+#ifdef CONFIG_HISI_CORE_CTRL
+struct atomic_notifier_head cpufreq_govinfo_notifier_list;
+#endif
 
 static bool init_cpufreq_transition_notifier_list_called;
 static int __init init_cpufreq_transition_notifier_list(void)
@@ -99,6 +106,17 @@ static int __init init_cpufreq_transition_notifier_list(void)
 	return 0;
 }
 pure_initcall(init_cpufreq_transition_notifier_list);
+
+#ifdef CONFIG_HISI_CORE_CTRL
+static bool init_cpufreq_govinfo_notifier_list_called;
+static int __init init_cpufreq_govinfo_notifier_list(void)
+{
+	ATOMIC_INIT_NOTIFIER_HEAD(&cpufreq_govinfo_notifier_list);
+	init_cpufreq_govinfo_notifier_list_called = true;
+	return 0;
+}
+pure_initcall(init_cpufreq_govinfo_notifier_list);
+#endif
 
 static int off __read_mostly;
 static int cpufreq_disabled(void)
@@ -125,6 +143,17 @@ struct kobject *get_governor_parent_kobj(struct cpufreq_policy *policy)
 		return cpufreq_global_kobject;
 }
 EXPORT_SYMBOL_GPL(get_governor_parent_kobj);
+
+#ifdef CONFIG_HISI_CPUFREQ
+struct cpufreq_frequency_table *cpufreq_frequency_get_table(unsigned int cpu)
+{
+	struct cpufreq_policy *policy = per_cpu(cpufreq_cpu_data, cpu);
+
+	return policy && !policy_is_inactive(policy) ?
+		policy->freq_table : NULL;
+}
+EXPORT_SYMBOL_GPL(cpufreq_frequency_get_table);
+#endif
 
 static inline u64 get_cpu_idle_time_jiffy(unsigned int cpu, u64 *wall)
 {
@@ -339,6 +368,7 @@ static void __cpufreq_notify_transition(struct cpufreq_policy *policy,
 			 (unsigned long)freqs->new, (unsigned long)freqs->cpu);
 		trace_cpu_frequency(freqs->new, freqs->cpu);
 		cpufreq_stats_record_transition(policy, freqs->new);
+		cpufreq_times_record_transition(policy, freqs->new);
 		srcu_notifier_call_chain(&cpufreq_transition_notifier_list,
 				CPUFREQ_POSTCHANGE, freqs);
 		if (likely(policy) && likely(policy->cpu == freqs->cpu))
@@ -655,8 +685,13 @@ static ssize_t show_##file_name				\
 show_one(cpuinfo_min_freq, cpuinfo.min_freq);
 show_one(cpuinfo_max_freq, cpuinfo.max_freq);
 show_one(cpuinfo_transition_latency, cpuinfo.transition_latency);
+#ifdef CONFIG_HISI_DRG
+show_one(scaling_min_freq, user_policy.min);
+show_one(scaling_max_freq, user_policy.max);
+#else
 show_one(scaling_min_freq, min);
 show_one(scaling_max_freq, max);
+#endif
 
 __weak unsigned int arch_freq_get_on_cpu(int cpu)
 {
@@ -703,7 +738,10 @@ static ssize_t store_##file_name					\
 	temp = new_policy.object;					\
 	ret = cpufreq_set_policy(policy, &new_policy);		\
 	if (!ret)							\
-		policy->user_policy.object = temp;			\
+		policy->user_policy.object = clamp_val(temp, policy->cpuinfo.min_freq, policy->cpuinfo.max_freq); \
+	/* show user_policy.min/max after drg enable, keep the same way as before */	\
+									\
+	trace_cpufreq_policy_update(current, policy->min, policy->max);	\
 									\
 	return ret ? ret : count;					\
 }
@@ -1165,6 +1203,12 @@ static void cpufreq_policy_free(struct cpufreq_policy *policy)
 	free_cpumask_var(policy->real_cpus);
 	free_cpumask_var(policy->related_cpus);
 	free_cpumask_var(policy->cpus);
+#ifdef CONFIG_HISI_CPUFREQ_GOVERNOR_BACKUP
+	if (policy->backup_governor_data) {
+		kfree(policy->backup_governor_data);
+		policy->backup_governor_data = NULL;
+	}
+#endif
 	kfree(policy);
 }
 
@@ -1289,6 +1333,7 @@ static int cpufreq_online(unsigned int cpu)
 			goto out_exit_policy;
 
 		cpufreq_stats_create_table(policy);
+		cpufreq_times_create_policy(policy);
 
 		write_lock_irqsave(&cpufreq_driver_lock, flags);
 		list_add(&policy->policy_list, &cpufreq_policy_list);
@@ -1672,6 +1717,9 @@ void cpufreq_resume(void)
 	if (!cpufreq_driver)
 		return;
 
+	if (unlikely(!cpufreq_suspended))
+		return;
+
 	cpufreq_suspended = false;
 
 	if (!has_target() && !cpufreq_driver->resume)
@@ -1749,6 +1797,9 @@ int cpufreq_register_notifier(struct notifier_block *nb, unsigned int list)
 	if (cpufreq_disabled())
 		return -EINVAL;
 
+#ifdef CONFIG_HISI_CORE_CTRL
+	WARN_ON(!init_cpufreq_govinfo_notifier_list_called);
+#endif
 	WARN_ON(!init_cpufreq_transition_notifier_list_called);
 
 	switch (list) {
@@ -1770,6 +1821,12 @@ int cpufreq_register_notifier(struct notifier_block *nb, unsigned int list)
 		ret = blocking_notifier_chain_register(
 				&cpufreq_policy_notifier_list, nb);
 		break;
+#ifdef CONFIG_HISI_CORE_CTRL
+	case CPUFREQ_GOVINFO_NOTIFIER:
+		ret = atomic_notifier_chain_register(
+				&cpufreq_govinfo_notifier_list, nb);
+		break;
+#endif
 	default:
 		ret = -EINVAL;
 	}
@@ -1810,6 +1867,12 @@ int cpufreq_unregister_notifier(struct notifier_block *nb, unsigned int list)
 		ret = blocking_notifier_chain_unregister(
 				&cpufreq_policy_notifier_list, nb);
 		break;
+#ifdef CONFIG_HISI_CORE_CTRL
+	case CPUFREQ_GOVINFO_NOTIFIER:
+		ret = atomic_notifier_chain_unregister(
+				&cpufreq_govinfo_notifier_list, nb);
+		break;
+#endif
 	default:
 		ret = -EINVAL;
 	}
@@ -1849,9 +1912,14 @@ EXPORT_SYMBOL(cpufreq_unregister_notifier);
 unsigned int cpufreq_driver_fast_switch(struct cpufreq_policy *policy,
 					unsigned int target_freq)
 {
+	int ret;
 	target_freq = clamp_val(target_freq, policy->min, policy->max);
 
-	return cpufreq_driver->fast_switch(policy, target_freq);
+	ret = cpufreq_driver->fast_switch(policy, target_freq);
+	if (ret)
+		cpufreq_times_record_transition(policy, ret);
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(cpufreq_driver_fast_switch);
 
@@ -1889,8 +1957,10 @@ static int __target_index(struct cpufreq_policy *policy, int index)
 	int retval = -EINVAL;
 	bool notify;
 
+#ifndef CONFIG_HISI_BIG_MAXFREQ_HOTPLUG
 	if (newfreq == policy->cur)
 		return 0;
+#endif
 
 	notify = !(cpufreq_driver->flags & CPUFREQ_ASYNC_NOTIFICATION);
 	if (notify) {
@@ -1951,6 +2021,10 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 	/* Make sure that target_freq is within supported range */
 	target_freq = clamp_val(target_freq, policy->min, policy->max);
 
+#ifdef CONFIG_HISI_DRG
+	target_freq = drg_cpufreq_check_limit(policy, target_freq);
+#endif
+
 	pr_debug("target for CPU %u: %u kHz, relation %u, requested %u kHz\n",
 		 policy->cpu, target_freq, relation, old_target_freq);
 
@@ -1960,8 +2034,10 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 	 * exactly same freq is called again and so we can save on few function
 	 * calls.
 	 */
+#ifndef CONFIG_HISI_BIG_MAXFREQ_HOTPLUG
 	if (target_freq == policy->cur)
 		return 0;
+#endif
 
 	/* Save last value to restore later on errors */
 	policy->restore_freq = policy->cur;
@@ -2231,6 +2307,10 @@ static int cpufreq_set_policy(struct cpufreq_policy *policy,
 	policy->min = new_policy->min;
 	policy->max = new_policy->max;
 
+	arch_set_max_freq_scale(policy->cpus, policy->max);
+
+	trace_cpu_frequency_limits(policy->max, policy->min, policy->cpu);
+
 	policy->cached_target_freq = UINT_MAX;
 
 	pr_debug("new min and max freqs are %u - %u kHz\n",
@@ -2427,6 +2507,23 @@ int cpufreq_boost_enabled(void)
 	return cpufreq_driver->boost_enabled;
 }
 EXPORT_SYMBOL_GPL(cpufreq_boost_enabled);
+
+/*********************************************************************
+ *               FREQUENCY INVARIANT ACCOUNTING SUPPORT              *
+ *********************************************************************/
+
+__weak void arch_set_freq_scale(struct cpumask *cpus,
+				unsigned long cur_freq,
+				unsigned long max_freq)
+{
+}
+EXPORT_SYMBOL_GPL(arch_set_freq_scale);
+
+__weak void arch_set_max_freq_scale(struct cpumask *cpus,
+				    unsigned long policy_max_freq)
+{
+}
+EXPORT_SYMBOL_GPL(arch_set_max_freq_scale);
 
 /*********************************************************************
  *               REGISTER / UNREGISTER CPUFREQ DRIVER                *

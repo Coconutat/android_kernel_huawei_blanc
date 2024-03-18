@@ -1,0 +1,308 @@
+&sensorhub {
+	#address-cells=<1>;
+	#size-cells=<0>;
+
+	light {
+		als1{
+			bus_number = <0x0>;
+			reg=<0x39>;
+			chip_id_register = <0x92>;
+			chip_id_value = <0xE4>;
+			file_id = <83>;
+			sensor_list_info_id = <0x03>;
+			sensor_type = "als";
+			poll_interval = <350>;
+			threshold_value = <0x1>;
+			GA1 = <0x1046>;
+			GA2 = <0xf3c>;
+			GA3 = <0x1194>;
+			tp_color = <0x0>;
+			again = <0x1>;
+			gpio_int1 = <0x26 0x1 0x0>;
+			atime = <0xdb>;
+			init_time = <0x96>;
+			status = "ok";
+			als_phone_type = <40>;
+			als_phone_version = <10>;
+			als_extend_data = <0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0>;
+			sensorlist_name="als-tmd3725";
+			vendor="ams";
+		};
+		als2{
+			bus_number = <0x0>;
+			reg=<0x60>;
+			chip_id_register = <0xF6>;
+			chip_id_value = <0x58>;
+			file_id = <100>;
+			sensor_list_info_id = <0x03>;
+			sensor_type = "als";
+			poll_interval = <350>;
+			threshold_value = <0x1>;
+			tp_color = <0x0>;
+			again = <0x1>;
+			gpio_int1 = <0x26 0x1 0x0>;
+			atime = <0xdb>;
+			init_time = <0x96>;
+			status = "ok";
+			als_phone_type = <40>;
+			als_phone_version = <10>;
+			als_extend_data = <0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0>;
+			sensorlist_name="als-vcnl36658";
+			vendor="vishay";
+		};
+
+	};
+
+	proximity {
+		ps1{
+			bus_number=<0>;
+			reg=<0x39>;
+			chip_id_register=<0x92>;
+			chip_id_value=<0xE4>;
+			file_id=<84>;
+			sensor_list_info_id = <0x04>;
+			sensor_type="ps";
+			min_proximity_value=<150>;
+			pwindows_value=<60>;
+			pwave_value=<19>;
+			threshold_value=<28>;
+			ps_calib_20cm_threshold=<120>;
+			ps_calib_5cm_threshold=<200>;
+			ps_calib_3cm_threshold=<250>;
+			gpio_int1=<&gpio27 1 0>;
+			poll_interval = <80>;
+			ps_oily_threshold = <3>;
+			oily_max_near_pdata=<250>;
+			max_oily_add_pdata=<100>;
+			max_near_pdata_loop=<3>;
+			oily_count_size=<8>;
+			status = "ok";
+			sensorlist_name="proximity-ams-tmd3725";
+			vendor="ams";
+			fifoReservedEventCount=<100>;
+			fifoMaxEventCount=<100>;
+			maxDelay=<200000>;
+			ptime = <3>;  //ms
+			wtime =<70>;    //ms
+			pulse_len=<4>;   //us
+			ps_pulse_count=<20>;
+			pgain=<4>;
+			led_current=<54>;  //mA
+			prox_avg=<3>;
+			offset_max=<200>;
+			offset_min=<50>;
+		};
+		ps2{
+			bus_number=<0>;
+			reg=<0x60>;
+			chip_id_register=<0xF6>;
+			chip_id_value=<0x58>;
+			file_id=<101>;
+			sensor_list_info_id = <0x04>;
+			sensor_type="ps";
+			min_proximity_value=<1500>;
+			pwindows_value=<65>;
+			pwave_value=<50>;
+			threshold_value=<110>;
+			ps_calib_20cm_threshold=<120>;
+			ps_calib_5cm_threshold=<200>;
+			ps_calib_3cm_threshold=<250>;
+			gpio_int1=<&gpio27 1 0>;
+			poll_interval = <80>;
+			ps_oily_threshold = <12>;
+			oily_max_near_pdata=<3000>;
+			max_oily_add_pdata=<250>;
+			max_near_pdata_loop=<2>;
+			oily_count_size=<12>;
+			status = "ok";
+			sensorlist_name="proximity-vishay-vcnl36658";
+			vendor="vishay";
+			fifoReservedEventCount=<100>;
+			fifoMaxEventCount=<100>;
+			maxDelay=<200000>;
+			ptime = <0x03>;  //25ms
+			wtime =<100>;
+			pulse_len=<8>;
+			ps_pulse_count=<100>;//
+			pgain=<4>;
+			led_current=<0x07>;  //125mA
+			prox_avg=<2>;
+			offset_max=<200>;
+			offset_min=<50>;
+		};
+
+	};
+
+	gsensor {
+		acc1 {
+			bus_number =<0>;
+			reg=<0x68>;
+			chip_id_register=<0x0>;
+			chip_id_value=<0xd3>;
+			file_id=<33>;
+			sensor_list_info_id =<0>;
+			sensor_type ="acc";
+			axis_map_x =<1>;
+			axis_map_y =<0>;
+			axis_map_z =<2>;
+			negate_x =<0>;
+			negate_y =<1>;
+			negate_z =<0>;
+			offset_x =<0>;
+			offset_y =<0>;
+			offset_z =<0>;
+			sensitivity_x =<1>;
+			sensitivity_y =<1>;
+			sensitivity_z =<1>;
+			gpio_int1=<&gpio0 0 0>;
+			gpio_int2=<&gpio25 7 0>;
+			gpio_int2_sh=<1010>;
+			calibrate_style =<0>;
+			minDelay=<4000>;
+			sensorlist_name="accelerometer-bmi160";
+			vendor="bosch";
+			status = "ok";
+		};
+	};
+
+	gyroscope {
+		gyro1 {
+			bus_number =<0>;
+			reg=<0x68>;
+			chip_id_register=<0x0>;
+			chip_id_value=<0xd3>;
+			file_id=<35>;
+			sensor_list_info_id =<5>;
+			sensor_type ="gyro";
+			axis_map_x =<1>;
+			axis_map_y =<0>;
+			axis_map_z =<2>;
+			negate_x =<0>;
+			negate_y =<1>;
+			negate_z =<0>;
+			poll_interval =<10>;
+			gpio_int1=<&gpio0 0 0>;
+			gpio_int2=<&gpio25 7 0>;
+			gpio_int2_sh=<1010>;
+			minDelay=<4000>;
+			sensorlist_name="gyroscope-bmi160";
+			vendor="bosch";
+			status = "ok";
+
+		};
+	};
+
+	compass {
+		mag1 {
+			bus_number=<0>;
+			reg=<0x0C>;
+			chip_id_register=<0x00>;
+			chip_id_value=<0x48>;
+			file_id=<67>;
+			sensor_list_info_id=<1>;
+			sensor_type="mag";
+			/*sensor-vdd-supply = <&ldo24>;*/
+			outbit=<0>;
+			calibrate_method=<2>;
+			axis_map_x=<1>;
+			axis_map_y=<0>;
+			axis_map_z=<2>;
+			negate_x=<0>;
+			negate_y=<0>;
+			negate_z=<1>;
+			poll_interval=<10>;
+			charger_trigger=<0>;
+			gpio_int1=<&gpio0 0 0>;
+			gpio_reset=<&gpio0 0 0>;
+			softiron_parameter = <146 35 241 2 172 254 241 2 35 41 167 2 172 254 167 2 58 41 0 0 0 0 0 0 0 0 0>;
+			sensorlist_name="mag-akm09918";
+			vendor="akm";
+			threshold_for_als_calibrate=<2000>;
+			minDelay=<10000>;
+			fifoReservedEventCount=<0>;
+			fifoMaxEventCount=<0>;
+			status = "ok";
+		};
+	};
+
+
+	fingerprint {
+
+
+		finger1 {
+			combo_bus_type = "spi";
+			combo_bus_num = <2>;
+			combo_data = <216>;
+			combo_tx = /bits/ 8 <0xF1>;
+			combo_rx_mask = /bits/ 8 <0xFF 0x00 0xFF 0xFF>;
+			combo_rx_exp = /bits/ 8 <0x0F 0x00 0x00 0x22>;
+
+			bus_type=<1>;
+			bus_number=<2>;
+			reg=<0x0>;
+			chip_id_register=<0xFC>;
+			chip_id_value=<0x3258>;
+			product_id_value=<43>;
+			file_id=<93>;
+			sensor_list_info_id = <0x12>;
+			sensor_type ="fingerprint";
+			poll_interval = <500>;
+			gpio_irq = <210>;
+			gpio_irq_sh = <1013>;
+			gpio_reset = <211>;
+			gpio_cs = <216>;
+			status = "ok";
+		};
+
+		finger2 {
+			combo_bus_type = "spi";
+			combo_bus_num = <2>;
+			combo_data = <216>;
+			combo_tx = /bits/ 8 <0xFC 0x00>;
+			combo_rx_mask = /bits/ 8 <0x00 0x00 0xFF 0xFF>;
+			combo_rx_exp = /bits/ 8 <0x00 0x00 0x52 0x61>;
+
+			bus_type=<1>;
+			bus_number=<2>;
+			reg=<0x0>;
+			chip_id_register=<0xFC>;
+			chip_id_value=<0x6152>;
+			product_id_value=<43>;
+			file_id=<94>;
+			sensor_list_info_id = <0x12>;
+			sensor_type ="fingerprint";
+			poll_interval = <500>;
+			gpio_irq = <210>;
+			gpio_irq_sh = <1013>;
+			gpio_reset = <211>;
+			gpio_cs = <216>;
+			status = "ok";
+		};
+	};
+
+	sar {
+		sar1 {
+			bus_number=<0>;
+			reg=<0x28>;
+			chip_id_register=<0xFA>;
+			chip_id_value=<0x23 0x20>;
+			file_id=<62>;
+			sensor_type="cap_prox";
+			sensor_list_info_id=<20>;
+			poll_interval=<200>;
+			calibrate_type=<4>;		// bit config 101(b) adapt to the param calibrate calibrate order
+			calibrate_order = "2";	// 0:free  1:near  2:far  3:other
+			shared_flag=<0>;
+			status = "disabled";
+			phone_type = /bits/ 16 <0x03>;  // 1:ALPS  2:BLANC  3:EMILY  4:NEO  5:CHARLOTTE
+			to_ap_threshold = /bits/ 16 <0xc8>;
+			to_modem_threshold = /bits/ 16 <0x7918 0xED8 0x78 0x7D0 0x898 0x320 0xFA0 0x320>;
+			init_reg_val = <0x00000014 0x23012447 0x28012A10 0x2B102C12 0x2D0B301B 0x340B3500 0x361C3708 0x10164219 0x43674490 0x29042600 0x31132080 0x00000000>;
+			ph = <0x2f>;
+			calibrate_thred = /bits/ 16 <0 0 0 0>;//for the factory far and near calibrate
+			sensorlist_name="CAP_PROX sensor-sx9323";
+			vendor="semtech";
+		};
+
+	};
+};

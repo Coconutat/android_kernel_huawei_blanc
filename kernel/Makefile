@@ -34,6 +34,9 @@ KASAN_SANITIZE_kcov.o := n
 # cond_syscall is currently not LTO compatible
 CFLAGS_sys_ni.o = $(DISABLE_LTO)
 
+# Don't instrument error handlers
+CFLAGS_cfi.o = $(DISABLE_CFI_CLANG)
+
 obj-y += sched/
 obj-y += locking/
 obj-y += power/
@@ -68,6 +71,7 @@ obj-$(CONFIG_KEXEC_FILE) += kexec_file.o
 obj-$(CONFIG_BACKTRACE_SELF_TEST) += backtracetest.o
 obj-$(CONFIG_COMPAT) += compat.o
 obj-$(CONFIG_CGROUPS) += cgroup/
+obj-$(CONFIG_HW_CGROUP_IONICE) += cgroup_ionice.o
 obj-$(CONFIG_UTS_NS) += utsname.o
 obj-$(CONFIG_USER_NS) += user_namespace.o
 obj-$(CONFIG_PID_NS) += pid_namespace.o
@@ -83,6 +87,8 @@ obj-$(CONFIG_KCOV) += kcov.o
 obj-$(CONFIG_KPROBES) += kprobes.o
 obj-$(CONFIG_KGDB) += debug/
 obj-$(CONFIG_DETECT_HUNG_TASK) += hung_task.o
+obj-$(CONFIG_DETECT_HUAWEI_HUNG_TASK) += huawei_hung_task.o
+obj-$(CONFIG_HUAWEI_INIT_WATCHDOG) += huawei_init_watchdog.o
 obj-$(CONFIG_LOCKUP_DETECTOR) += watchdog.o
 obj-$(CONFIG_HARDLOCKUP_DETECTOR_PERF) += watchdog_hld.o
 obj-$(CONFIG_SECCOMP) += seccomp.o
@@ -101,6 +107,7 @@ obj-$(CONFIG_TRACEPOINTS) += trace/
 obj-$(CONFIG_IRQ_WORK) += irq_work.o
 obj-$(CONFIG_CPU_PM) += cpu_pm.o
 obj-$(CONFIG_BPF) += bpf/
+obj-$(CONFIG_CFI_CLANG) += cfi.o
 
 obj-$(CONFIG_PERF_EVENTS) += events/
 
@@ -110,8 +117,17 @@ obj-$(CONFIG_CRASH_DUMP) += crash_dump.o
 obj-$(CONFIG_JUMP_LABEL) += jump_label.o
 obj-$(CONFIG_CONTEXT_TRACKING) += context_tracking.o
 obj-$(CONFIG_TORTURE_TEST) += torture.o
-
+obj-$(CONFIG_HW_CGROUP_PIDS) += cgroup_huawei/
 obj-$(CONFIG_HAS_IOMEM) += memremap.o
+obj-$(CONFIG_HW_VIP_THREAD) += hwcfs/
+obj-$(CONFIG_HW_QOS_THREAD) += hwqos/
+obj-$(CONFIG_HW_VIP_THREAD) += cpu_netlink/
+obj-$(CONFIG_HW_CPULOAD_NOTI) += cpu_netlink/
+obj-$(CONFIG_HW_IAWARE_THREAD_BOOST) += cpu_netlink/
+obj-$(CONFIG_HW_RTG_SCHED) += hwrtg/
+obj-$(CONFIG_HW_RTG_SCHED) += cpu_netlink/
+
+obj-$(CONFIG_HW_CGROUP_WORKINGSET) += cgroup_workingset.o
 
 $(obj)/configs.o: $(obj)/config_data.h
 

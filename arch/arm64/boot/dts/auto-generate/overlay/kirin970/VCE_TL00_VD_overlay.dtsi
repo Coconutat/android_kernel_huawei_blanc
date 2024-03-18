@@ -1,0 +1,23 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "VCE_TL00_VC_overlay.dtsi"
+
+/ {
+	board_id = <6977>;
+};
+&rootparam {
+    hisi,boardid = <6 9 7 7>;
+    hisi,boardname = "VCE_TL00_VD";
+};
+
+&huawei_imx586 {
+	compatible = "huawei,imx586_v4";
+	avdd-supply = <&ldo34>;
+};

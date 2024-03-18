@@ -1,0 +1,68 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "VCE_TL00_VD_overlay.dtsi"
+
+/ {
+	board_id = <6982>;
+};
+&rootparam {
+    hisi,boardid = <6 9 8 2>;
+    hisi,boardname = "VCE_TL00_VE";
+};
+
+&huawei_imx586 {
+	status = "disable";
+};
+
+&huawei_imx350 {
+	compatible = "huawei,imx350VCE";
+	huawei,sensor_name = "IMX350VCE";
+	huawei,is_fpga = <0>;
+	huawei,pd_valid = <1>;
+	huawei,sensor_index = <0>;
+	huawei,csi_index = <1>;
+	huawei,i2c_index = <1>;
+	huawei,reset_valid = <1>;
+	clock-names = "clk_isp_snclk1";
+	clocks = <&clk_gate_isp_snclk1>;
+	huawei,mclk = <24000000>;
+	huawei,vcmpd_valid = <0>;
+	avdd-supply = <&ldo34>;
+	vcm-supply = <&ldo25>;
+	dvdd-supply = <&ldo20>;
+	iovdd-supply = <&ldo21>;
+	huawei,ldo-names = "avdd", "vcm", "dvdd", "iovdd";
+	gpios = <&gpio1 5 0>;
+	huawei,gpio-ctrl-types = "reset";
+	status = "ok";
+};
+
+&huawei_ov20880 {
+	compatible = "huawei,ov20880VCE";
+	huawei,sensor_name = "OV20880VCE";
+	huawei,is_fpga = <0>;
+	huawei,pd_valid = <1>;
+	huawei,sensor_index = <0>;
+	huawei,csi_index = <1>;
+	huawei,i2c_index = <1>;
+	huawei,reset_valid = <1>;
+	clock-names = "clk_isp_snclk1";
+	clocks = <&clk_gate_isp_snclk1>;
+	huawei,mclk = <24000000>;
+	huawei,vcmpd_valid = <0>;
+	avdd-supply = <&ldo34>;
+	vcm-supply = <&ldo25>;
+	dvdd-supply = <&ldo20>;
+	iovdd-supply = <&ldo21>;
+	huawei,ldo-names = "avdd", "vcm", "dvdd", "iovdd";
+	gpios = <&gpio1 5 0>;
+	huawei,gpio-ctrl-types = "reset";
+	status = "ok";
+};

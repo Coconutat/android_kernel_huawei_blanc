@@ -54,11 +54,10 @@ static void pwm_backlight_power_on(struct pwm_bl_data *pb, int brightness)
 	if (err < 0)
 		dev_err(pb->dev, "failed to enable power supply\n");
 
-	pwm_enable(pb->pwm);
-
 	if (pb->enable_gpio)
 		gpiod_set_value_cansleep(pb->enable_gpio, 1);
 
+	pwm_enable(pb->pwm);
 	pb->enabled = true;
 }
 
@@ -67,11 +66,11 @@ static void pwm_backlight_power_off(struct pwm_bl_data *pb)
 	if (!pb->enabled)
 		return;
 
-	if (pb->enable_gpio)
-		gpiod_set_value_cansleep(pb->enable_gpio, 0);
-
 	pwm_config(pb->pwm, 0, pb->period);
 	pwm_disable(pb->pwm);
+
+	if (pb->enable_gpio)
+		gpiod_set_value_cansleep(pb->enable_gpio, 0);
 
 	regulator_disable(pb->power_supply);
 	pb->enabled = false;
@@ -212,7 +211,7 @@ static int pwm_backlight_initial_power_state(const struct pwm_bl_data *pb)
 	 */
 
 	/* if the enable GPIO is disabled, do not enable the backlight */
-	if (pb->enable_gpio && gpiod_get_value_cansleep(pb->enable_gpio) == 0)
+	if (pb->enable_gpio && gpiod_get_value(pb->enable_gpio) == 0)
 		return FB_BLANK_POWERDOWN;
 
 	/* The regulator is disabled, do not enable the backlight */

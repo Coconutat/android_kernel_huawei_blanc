@@ -663,26 +663,22 @@ struct sk_buff {
 			struct sk_buff		*prev;
 
 			union {
-				struct net_device	*dev;
-				/* Some protocols might use this space to store information,
-				 * while device pointer would be NULL.
-				 * UDP receive path is one user.
-				 */
-				unsigned long		dev_scratch;
+				ktime_t		tstamp;
+				u64		skb_mstamp;
 			};
 		};
-		struct rb_node		rbnode; /* used in netem, ip4 defrag, and tcp stack */
-		struct list_head	list;
+		struct rb_node	rbnode; /* used in netem & tcp stack */
 	};
+	struct sock		*sk;
 
 	union {
-		struct sock		*sk;
+		struct net_device	*dev;
+		/* Some protocols might use this space to store information,
+		 * while device pointer would be NULL.
+		 * UDP receive path is one user.
+		 */
+		unsigned long		dev_scratch;
 		int			ip_defrag_offset;
-	};
-
-	union {
-		ktime_t		tstamp;
-		u64		skb_mstamp;
 	};
 	/*
 	 * This is the control buffer. It is free to use for every
@@ -690,8 +686,19 @@ struct sk_buff {
 	 * want to keep them across layers you have to do a skb_clone()
 	 * first. This is owned by whoever has the skb queued ATM.
 	 */
+#ifdef CONFIG_MPTCP
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+	char			cb[128] __aligned(8);
+#else
+	char			cb[80] __aligned(8);
+#endif
+#else
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+	char			cb[96] __aligned(8);
+#else
 	char			cb[48] __aligned(8);
-
+#endif
+#endif
 	unsigned long		_skb_refdst;
 	void			(*destructor)(struct sk_buff *skb);
 #ifdef CONFIG_XFRM
@@ -1288,22 +1295,6 @@ static inline void skb_zcopy_set(struct sk_buff *skb, struct ubuf_info *uarg)
 	}
 }
 
-static inline void skb_zcopy_set_nouarg(struct sk_buff *skb, void *val)
-{
-	skb_shinfo(skb)->destructor_arg = (void *)((uintptr_t) val | 0x1UL);
-	skb_shinfo(skb)->tx_flags |= SKBTX_ZEROCOPY_FRAG;
-}
-
-static inline bool skb_zcopy_is_nouarg(struct sk_buff *skb)
-{
-	return (uintptr_t) skb_shinfo(skb)->destructor_arg & 0x1UL;
-}
-
-static inline void *skb_zcopy_get_nouarg(struct sk_buff *skb)
-{
-	return (void *)((uintptr_t) skb_shinfo(skb)->destructor_arg & ~0x1UL);
-}
-
 /* Release a reference on a zerocopy structure */
 static inline void skb_zcopy_clear(struct sk_buff *skb, bool zerocopy)
 {
@@ -1313,7 +1304,7 @@ static inline void skb_zcopy_clear(struct sk_buff *skb, bool zerocopy)
 		if (uarg->callback == sock_zerocopy_callback) {
 			uarg->zerocopy = uarg->zerocopy && zerocopy;
 			sock_zerocopy_put(uarg);
-		} else if (!skb_zcopy_is_nouarg(skb)) {
+		} else {
 			uarg->callback(uarg, zerocopy);
 		}
 
@@ -2377,7 +2368,7 @@ static inline void skb_probe_transport_header(struct sk_buff *skb,
 		return;
 	else if (skb_flow_dissect_flow_keys(skb, &keys, 0))
 		skb_set_transport_header(skb, keys.control.thoff);
-	else if (offset_hint >= 0)
+	else
 		skb_set_transport_header(skb, offset_hint);
 }
 
@@ -3317,7 +3308,6 @@ int skb_shift(struct sk_buff *tgt, struct sk_buff *skb, int shiftlen);
 void skb_scrub_packet(struct sk_buff *skb, bool xnet);
 unsigned int skb_gso_transport_seglen(const struct sk_buff *skb);
 bool skb_gso_validate_mtu(const struct sk_buff *skb, unsigned int mtu);
-bool skb_gso_validate_mac_len(const struct sk_buff *skb, unsigned int len);
 struct sk_buff *skb_segment(struct sk_buff *skb, netdev_features_t features);
 struct sk_buff *skb_vlan_untag(struct sk_buff *skb);
 int skb_ensure_writable(struct sk_buff *skb, int write_len);
@@ -4085,21 +4075,6 @@ static inline unsigned int skb_gso_network_seglen(const struct sk_buff *skb)
 {
 	unsigned int hdr_len = skb_transport_header(skb) -
 			       skb_network_header(skb);
-	return hdr_len + skb_gso_transport_seglen(skb);
-}
-
-/**
- * skb_gso_mac_seglen - Return length of individual segments of a gso packet
- *
- * @skb: GSO skb
- *
- * skb_gso_mac_seglen is used to determine the real size of the
- * individual segments, including MAC/L2, Layer3 (IP, IPv6) and L4
- * headers (TCP/UDP).
- */
-static inline unsigned int skb_gso_mac_seglen(const struct sk_buff *skb)
-{
-	unsigned int hdr_len = skb_transport_header(skb) - skb_mac_header(skb);
 	return hdr_len + skb_gso_transport_seglen(skb);
 }
 

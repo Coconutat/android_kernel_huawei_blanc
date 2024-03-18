@@ -1,0 +1,17 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "ALPS_LX9_LV_CS_RF_config.dtsi"
+
+/ {
+	hisi,boardid = <6 4 2 5>;
+	hisi,boardname = "ALPS_LX9_LV_CS_9688";
+	hisi,product_id = <0x39005000>;
+	hisi,modem_id = <0x39005000>;
+};

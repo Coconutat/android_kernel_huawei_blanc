@@ -1,0 +1,65 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "COL_AL00_VA_overlay.dtsi"
+
+/ {
+	board_id = <6821>;
+};
+
+&rootparam {
+    hisi,boardid = <6 8 2 1>;
+    hisi,boardname = "COL_L29_VA";
+};
+&codec_controller {
+		hi64xx_irq@0{
+				hi6403_codec@0 {
+						hisilicon,wakeup_hisi_algo_support = <0>;
+				};
+		};
+	};
+
+	&audio_hw_config {
+		audio_capability {
+			/*
+				use hisilicon wakeup engine.
+				true: use hisilicon wakeup engine.
+				false: DO NOT use hisilicon wakeup engine.
+			*/
+			wakeup_hisiengine = "false";
+		};
+	};
+
+
+	&sensorhub{
+		sar{
+			sar1{
+				status = "ok";
+			};
+		};
+		rpc{
+            		rpc{
+			compatible = "huawei,rpc";
+			file_id = <0x18>;
+			sensor_list_info_id = <24>;
+			sensor_type = "rpc";
+			sensorlist_name = "rpc";
+			mask = <0xFFFF 0x23F 0x23F 0x23F 0x23F 0x23F 0x23F 0x23F
+				0x23F 0x23F 0x23F 0x23F 0x23F 0x23F 0x23F 0x23F
+				0x23F 0x23F 0x23F 0x23F 0x23F 0x23F 0x20F 0x20F
+				0x20F 0x20F 0x20F 0x20F 0x20F 0xF 0xFFFF 0xFFFF>;
+			table = <0xFFFF 0x217 0x227 0x207 0x213 0x223 0x203 0x214
+				 0x224 0x204 0x215 0x225 0x205 0x216 0x226 0x206
+				 0x211 0x221 0x201 0x212 0x222 0x202 0x1 0x2
+				 0x3 0x4 0x5 0x6 0x7 0x0 0xFFFF 0xFFFF>;
+			default_value = <0x1D>;
+			status = "ok";
+            };
+        };
+};

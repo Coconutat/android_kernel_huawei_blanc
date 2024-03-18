@@ -15,8 +15,10 @@
 #include <linux/gfp.h>
 #include <linux/types.h>
 #include <linux/workqueue.h>
-
-
+#include <linux/mm.h>
+#ifdef CONFIG_HISI_PAGE_TRACE
+#include <linux/hisi/mem_trace.h>
+#endif
 /*
  * Flags to pass to kmem_cache_create().
  * The ones marked DEBUG are only valid if CONFIG_DEBUG_SLAB is set.
@@ -28,6 +30,13 @@
 #define SLAB_CACHE_DMA		0x00004000UL	/* Use GFP_DMA memory */
 #define SLAB_STORE_USER		0x00010000UL	/* DEBUG: Store the last owner for bug hunting */
 #define SLAB_PANIC		0x00040000UL	/* Panic if kmem_cache_create() fails */
+#ifdef CONFIG_HW_SLUB_SANITIZE
+#define SLAB_CLEAR              0x00000200UL    /* Clear object when it is freed */
+#endif
+
+#ifdef CONFIG_HW_SLUB_DF
+#define SLAB_DOUBLEFREE_CHECK              0x00001000UL    /*Enable double free check dynamically*/
+#endif
 /*
  * SLAB_TYPESAFE_BY_RCU - **WARNING** READ THIS!
  *
@@ -95,6 +104,13 @@
 #define SLAB_KASAN		0x00000000UL
 #endif
 
+#ifdef CONFIG_HISI_PAGE_TRACE
+#define SLAB_HISI_NOTRACE     0x10000000UL
+#define SLAB_HISI_TRACE       0x20000000UL
+#else
+#define SLAB_HISI_NOTRACE     0x00000000UL
+#define SLAB_HISI_TRACE       0x00000000UL
+#endif
 /* The following flags affect the page allocator grouping pages by mobility */
 #define SLAB_RECLAIM_ACCOUNT	0x00020000UL		/* Objects are reclaimable */
 #define SLAB_TEMPORARY		SLAB_RECLAIM_ACCOUNT	/* Objects are short-lived */
@@ -416,7 +432,18 @@ kmalloc_order_trace(size_t size, gfp_t flags, unsigned int order)
 static __always_inline void *kmalloc_large(size_t size, gfp_t flags)
 {
 	unsigned int order = get_order(size);
+#ifdef CONFIG_HISI_PAGE_TRACE
+	void *addr = kmalloc_order_trace(size, flags, order);
+	if (likely(addr)) {
+		struct page *page = virt_to_page(addr);
+
+		set_lslub_track(page, order, _RET_IP_);
+		mod_zone_page_state(page_zone(page), NR_LSLAB_PAGES, 1 << order);
+	}
+	return addr;
+#else
 	return kmalloc_order_trace(size, flags, order);
+#endif
 }
 
 /**

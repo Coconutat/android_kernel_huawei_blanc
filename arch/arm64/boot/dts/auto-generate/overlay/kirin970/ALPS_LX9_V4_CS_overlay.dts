@@ -1,0 +1,23 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "ALPS_LX9_V3_CS_2LANE_overlay.dtsi"
+
+/ {
+	board_id = <6413>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <29>;
+    hisi,boardid = <6 4 1 3>;
+    hisi,boardname = "ALPS_LX9_V4_CS";
+};
+

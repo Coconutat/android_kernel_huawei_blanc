@@ -1,0 +1,38 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "ALPS_TUGL_V1_config.dtsi"
+
+/ {
+	hisi,boardid = <6 4 0 3>;
+	hisi,boardname = "ALPS_TC_DEL_SWITCH";
+	hisi,product_id = <0x39000000>;
+	hisi,modem_id = <0x39000000>;
+	amba {
+		i2c1: i2c@FFD72000 {
+			fusb30x_i2c1@22 {
+				status = "ok";
+				fairchild,int_n = <&gpio22 6 0>;
+			};
+			rt1711_i2c1@4e {
+				status = "ok";
+				rt1711,irq_pin = <&gpio22 6 0>;
+			};
+			tusb422_i2c1@20 {
+				status = "ok";
+				ti,alert-gpio = <&gpio22 6 0>;
+			};
+			rt9748: rt9748@67 {
+				loadswitch_int = <&gpio27 3 0>;
+				loadswitch_en = <&gpio19 1 0>;
+				status = "ok";
+			};
+		};
+	};
+};

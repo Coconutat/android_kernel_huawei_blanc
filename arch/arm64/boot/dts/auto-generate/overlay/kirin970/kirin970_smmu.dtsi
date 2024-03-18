@@ -1,0 +1,56 @@
+/{
+	smmu:smmu_lpae{
+		compatible = "hisi,hisi-smmu-lpae";
+		#iommu-cells = <0>;
+		status = "ok";
+
+		iova_info {
+			start-addr = <0x0 0x8000>;
+			size = <0x1 0x0>;
+			iova-align = <0x0 0x8000>;
+		};
+	};
+
+	smmu_dss:smmu_dss {
+		compatible = "hisi,hisi-smmu-lpae";
+		#iommu-cells = <0>;
+		status = "ok";
+
+		iova_info {
+			start-addr = <0x0 0x10000>;
+			size = <0x1 0x0>;
+			iova-align = <0x0 0x10000>;
+		};
+	};
+	smmu_cam:smmu_cam {
+		compatible = "hisi,hisi-smmu-lpae";
+		#iommu-cells = <0>;
+		status = "ok";
+		iova_info {
+			start-addr = <0x0 0x8000>;
+			size = <0x0 0xBFFF8000>;
+			iova-align = <0x0 0x8000>;
+		};
+	};
+	smmu_vcodec:smmu_vcodec {
+		compatible = "hisi,hisi-smmu-lpae";
+		#iommu-cells = <0>;
+		status = "ok";
+
+		iova_info {
+			start-addr = <0x0 0x10000>;
+			size = <0x1 0x0>;
+			iova-align = <0x0 0x10000>;
+		};
+	};
+	smmu_ipu:smmu_ipu {
+		compatible = "hisi,hisi-smmu-lpae";
+		#iommu-cells = <0>;
+		status = "ok";
+		iova_info {
+			start-addr = <0x0 0x40000>;
+			size = <0x0 0x80000000>;
+			iova-align = <0x0 0x1000>;
+		};
+	};
+};

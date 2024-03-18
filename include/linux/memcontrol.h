@@ -31,6 +31,10 @@
 #include <linux/writeback.h>
 #include <linux/page-flags.h>
 
+#ifdef CONFIG_HUAWEI_PROMM
+#define PROMM_PRIORITY_MAX 20
+#endif
+
 struct mem_cgroup;
 struct page;
 struct mm_struct;
@@ -110,8 +114,11 @@ struct mem_cgroup_per_node {
 	struct lruvec		lruvec;
 	struct lruvec_stat __percpu *lruvec_stat;
 	unsigned long		lru_zone_size[MAX_NR_ZONES][NR_LRU_LISTS];
-
+#ifdef CONFIG_HUAWEI_PROMM
+	struct mem_cgroup_reclaim_iter	iter[PROMM_PRIORITY_MAX + 1];
+#else
 	struct mem_cgroup_reclaim_iter	iter[DEF_PRIORITY + 1];
+#endif
 
 	struct rb_node		tree_node;	/* RB tree node */
 	unsigned long		usage_in_excess;/* Set to the value by which */
@@ -290,6 +297,19 @@ void mem_cgroup_cancel_charge(struct page *page, struct mem_cgroup *memcg,
 		bool compound);
 void mem_cgroup_uncharge(struct page *page);
 void mem_cgroup_uncharge_list(struct list_head *page_list);
+
+#ifdef CONFIG_MEMCG_PROTECT_LRU
+/* there are 3 protect memcgs */
+#define PROTECT_MEMCG_MAX	3
+extern struct mem_cgroup *prot_mem_cgroup[PROTECT_MEMCG_MAX];
+extern int protect_reclaim_ratio;
+extern int protect_reclaim_ratio_handler(struct ctl_table *table, int write,
+			void __user *buffer, size_t *length, loff_t *ppos);
+extern int is_prot_memcg(struct mem_cgroup *memcg, bool boot);
+extern int shrink_prot_memcg(struct mem_cgroup *memcg);
+extern void shrink_prot_memcg_by_overlimit(struct mem_cgroup *memcg);
+extern void shrink_prot_memcg_by_overratio(void);
+#endif
 
 void mem_cgroup_migrate(struct page *oldpage, struct page *newpage);
 

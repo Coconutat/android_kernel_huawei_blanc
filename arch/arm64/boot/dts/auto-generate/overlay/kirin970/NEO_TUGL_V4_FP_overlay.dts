@@ -1,0 +1,72 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "NEO_TUGL_V3_FP_overlay.dtsi"
+/include/ "NEO_TUGL_V4_FP_overlay_module_amba.dts"
+
+/ {
+        board_id = <6489>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <168>;
+    hisi,boardid = <6 4 8 9>;
+    hisi,boardname = "NEO_TUGL_V4_FP";
+};
+
+
+
+&cc_anti_corrosion {
+	cc_corrosion_gpio = <&gpio23 1 0>;
+	pinctrl-0 = <&gpio185_pmx_func &gpio185_cfg_func>;
+	pinctrl-1 = <&gpio185_pmx_idle &gpio185_cfg_idle>;
+	gpio_mode = <1>;
+	status = "disabled";
+};
+
+&fingerprint {
+	spi-max-frequency = <5000000>;
+	fingerprint,product = "neo";
+
+	fingerprint,navigation_adjust1 = <0>;
+	fingerprint,navigation_adjust2 = <0>;
+
+	fingerprint,fpc2050 = <1>;
+	fingerprint,spi_num = <2>;
+	fingerprint,force_storage_type = <1>;
+	fingerprint,sensor_type = <257>;
+
+	fingerprint,reset_gpio = <202>;
+	fingerprint,irq_gpio = <209>;
+	fingerprint,cs_gpio = <217>;
+};
+
+&sensorhub {
+	gsensor {
+		acc1 {
+			used_int_pin =<1>;
+		};
+		acc2 {
+			used_int_pin =<1>;
+		};
+	};
+	light{
+		als1{
+			als_phone_version = <11>;
+		};
+		als2{
+			als_phone_version = <11>;
+		};
+	};
+};
+&direct_charger {
+	min_dc_bat_vol = <3550>;
+};

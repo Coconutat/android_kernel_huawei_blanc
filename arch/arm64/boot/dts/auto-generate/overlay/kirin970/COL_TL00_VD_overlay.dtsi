@@ -1,0 +1,24 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "COL_TL00_VC_overlay.dtsi"
+
+/ {
+	board_id = <6809>;
+};
+
+&rootparam {
+    hisi,boardid = <6 8 0 9>;
+    hisi,boardname = "COL_TL00_VD";
+};
+
+&antenna_board_adc_match{
+	antenna_board_match_range = <1700 1875>;
+	status = "ok";
+};

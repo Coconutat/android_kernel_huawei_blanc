@@ -1,0 +1,6 @@
+/{
+	huawei_lga_check: huawei_lga_check {
+		compatible = "huawei,lga_check";
+		status = "disabled";
+	};
+};

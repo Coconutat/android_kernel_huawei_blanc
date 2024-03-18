@@ -1,0 +1,39 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "ALPS_TUGL_VN1_CS_JDI_overlay.dtsi"
+
+/ {
+	board_id = <6422>;
+};
+
+&rootparam {
+    hisi,boardid = <6 4 2 2>;
+    hisi,boardname = "ALPS_TUGL_VN1_CS_G_WIFI_PMIC";
+};
+
+
+&fastboot_pmic {
+	hisilicon,init-reg-num = <3>;
+	hisilicon,init-reg-addrs = <0x038 0x10c 0x119>;
+	hisilicon,init-reg-vals  = <0x0 0x1 0x4>;
+};
+
+&bcm_wifi {
+	wifi_fw_test_name = "/vendor/firmware/fw_bcm4359_nonsig_384.bin";
+	wifi_fw_ap_name = "/vendor/firmware/fw_bcm4359_apsta_hw_384.bin";
+	wifi_fw_name = "/vendor/firmware/fw_bcm4359_hw_384.bin";
+	wifi_nvram_name = "/vendor/firmware/nvram4359_hw_alps384_v1.txt";
+};
+
+&bcm_bt {
+	ic_type = "bcm4359";
+	bt_fw_type = "pmic";
+	status = "ok";
+};

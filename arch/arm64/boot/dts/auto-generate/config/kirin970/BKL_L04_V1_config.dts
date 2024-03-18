@@ -1,0 +1,165 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "huawei_connectivity.dtsi"
+/include/ "huawei_gps.dtsi"
+/include/ "huawei_bluetooth.dtsi"
+/include/ "lcdkit/bkl_l04/devkit_lcd.dtsi"
+/include/ "BKL_L09_DELETE9688_VN2_config.dtsi"
+/include/ "BKL_L04_V1_pin.dtsi"
+/include/ "BKL_L04_V1_sec_pin.dtsi"
+/include/ "BKL_L04_V1_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 9 2 1>;
+	hisi,boardname = "BKL_L04_V1";
+	hisi,modem_id = <0x39620000>;
+	hisi,product_name = "BKL-L04";
+	huawei_lcd_panel: huawei,lcd_panel {
+		product_id = <3003>;
+		gpio_id = <9 8>;
+		gpio_cfg_addr = <0xE896CF04 0xE896CF00>;
+	};
+
+	amba: amba {
+		i2c1: i2c@FFD72000 {
+			fusb30x_i2c1@22 {
+				status = "ok";
+				fairchild,int_n = <&gpio27 1 0>;
+			};
+			rt1711_i2c1@4e {
+				reg = <0x4e>;
+				status = "ok";
+				rt1711,irq_pin = <&gpio27 1 0>;
+			};
+			tusb422_i2c1@20 {
+				status = "ok";
+				ti,alert-gpio = <&gpio27 1 0>;
+			};
+		};
+
+		i2c3: i2c@FDF0C000 {
+			pn547_nfc: nfc@28 {
+				pn547,ven = <&gpio16 7 0>;
+				pinctrl-names = "default","idle";
+				pinctrl-0 = <&gpio135_pmx_func &gpio201_pmx_func &gpio030_cfg_func &gpio135_cfg_func &gpio201_cfg_func>;
+				pinctrl-1 = <&gpio135_pmx_idle &gpio201_pmx_idle &gpio030_cfg_idle &gpio135_cfg_idle &gpio201_cfg_idle>;
+			};
+		};
+
+		i2c4: i2c@FDF0D000 {
+			/delete-node/ fusb30x_i2c4@22;
+			/delete-node/ tusb422_i2c4@20;
+			/delete-node/ rt1711_i2c4@4e;
+			tusb320_typec:typec@47{
+				reg = <0x47>;
+				tusb320_typec,gpio_enb = <&gpio1 2 0>;
+				tusb320_typec,gpio_intb = <&gpio27 5 0>;
+				tusb320_gpio_enb = <1>;
+				typec_trigger_otg = <1>;
+				tusb320_mdelay = <50>;
+				status = "disabled";
+			};
+			fusb301_typec: typec@21 {
+				reg = <0x21>;
+				fusb301_typec,gpio_enb = <&gpio1 2 0>;
+				fusb301_typec,gpio_intb = <&gpio27 5 0>;
+				fusb301_gpio_enb = <1>;
+				typec_trigger_otg = <1>;
+				status = "disabled";
+			};
+			pericom30216_typec: typec@1d {
+				reg = <0x1d>;
+				pericom30216_typec,gpio_enb = <&gpio1 2 0>;
+				pericom30216_typec,gpio_intb = <&gpio27 5 0>;
+				pericom30216_gpio_enb = <1>;
+				typec_trigger_otg = <1>;
+				pericom30216_mdelay = <50>;
+				status = "disabled";
+			};
+			ptn5150h_typec: typec@1E {
+				reg = <0x1e>;
+				ptn5150h_typec,gpio_enb = <&gpio1 2 0>;
+				ptn5150h_typec,gpio_intb = <&gpio27 5 0>;
+				ptn5150h_gpio_enb = <1>;
+				typec_trigger_otg = <1>;
+				status = "disabled";
+			};
+		};
+	};
+	dwmmc2: dwmmc2@FC183000 {
+		wifi_sdio_sdr104_192M;
+		/delete-property/ caps-wifi-no-lowpwr;
+		/delete-property/ caps2-wifi-support-cmd11;
+		pinctrl-0=<>;
+		pinctrl-1=<>;
+	};
+	bcm_wifi {
+		compatible = "hisilicon,bcm_wifi";
+		ic_type = "bcm43455";
+		wifi_fw_test_name = "/vendor/firmware/fw_bcm43455_test_hw_apsta.bin";
+		wifi_fw_ap_name = "/vendor/firmware/fw_bcm43455_apsta_hw.bin";
+		wifi_fw_name = "/vendor/firmware/fw_bcm43455_hw.bin";
+		wifi_nvram_name = "/vendor/firmware/nvram43455_hw_bkl_l04.txt";
+		clocks = <&clk_pmu32kb>;
+		clock-names = "apb_pclk";
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&gpio128_pmx_func &gpio129_pmx_func &gpio130_pmx_func
+			     &gpio131_pmx_func &gpio132_pmx_func &gpio133_pmx_func
+			     &gpio128_cfg_func &gpio129_cfg_func &gpio130_cfg_func
+			     &gpio131_cfg_func &gpio132_cfg_func &gpio133_cfg_func>;
+		pinctrl-1 = <&gpio128_pmx_idle &gpio129_pmx_idle &gpio130_pmx_idle
+			     &gpio131_pmx_idle &gpio132_pmx_idle &gpio133_pmx_idle
+			     &gpio128_cfg_idle &gpio129_cfg_idle &gpio130_cfg_idle
+			     &gpio131_cfg_idle &gpio132_cfg_idle &gpio133_cfg_idle>;
+		wifi_supply_type = <0>;
+		wlan-on,gpio-enable= <&gpio6 3 0>;
+		wlan-irq,gpio-irq = <&gpio22 1 0>;
+		status = "ok";
+	};
+
+	hw_connectivity {
+		compatible = "huawei,hw_connectivity";
+		/*huawei configuration*/
+		chip_type = "bcm43xx";
+	};
+
+	bluetooth_power: bluetooth_power{
+		status = "ok";
+		huawei,bt_en = <54>;
+		huawei,no_vio_switch = <1>;
+	};
+
+	bluetooth_sleep: bluetooth_sleep{
+		status = "ok";
+		huawei,host_wake_bt = <183>;
+		huawei,bt_wake_host = <151>;
+	};
+	gps_power: gps_power{
+		status = "ok";
+		huawei,gps_en = <&gpio24 3 0>;
+		huawei,gps_hostwake = <&gpio22 6 0>;
+		pinctrl-0 = <&gpio012_pmx_func &gpio012_cfg_func>;
+		pinctrl-1 = <&gpio012_pmx_idle &gpio012_cfg_idle>;
+		huawei,gps_refclk = <5>;
+		huawei,mcu_req = <&gpio24 4 0>;
+		huawei,mcu_req_rsp = <&gpio27 2 0>;
+		broadcom_config,ic_type="bcm4774";
+		broadcom_config,tty_port="ttyAMA5";
+		factest_timeout="9";
+		batching,channel_type = "sensorhub";
+	};
+	/**irda config begin*/
+	irda{
+		compatible = "irda,config";
+		irda,chiptype = <3>;/*hi64xx*/
+	};
+};

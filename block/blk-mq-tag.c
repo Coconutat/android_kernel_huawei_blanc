@@ -54,9 +54,10 @@ void __blk_mq_tag_idle(struct blk_mq_hw_ctx *hctx)
 	if (!test_and_clear_bit(BLK_MQ_S_TAG_ACTIVE, &hctx->state))
 		return;
 
-	atomic_dec(&tags->active_queues);
-
-	blk_mq_tag_wakeup_all(tags, false);
+	if (tags) {
+		atomic_dec(&tags->active_queues);
+		blk_mq_tag_wakeup_all(tags, false);
+	}
 }
 
 /*
@@ -281,6 +282,14 @@ static void bt_tags_for_each(struct blk_mq_tags *tags, struct sbitmap_queue *bt,
 static void blk_mq_all_tag_busy_iter(struct blk_mq_tags *tags,
 		busy_tag_iter_fn *fn, void *priv)
 {
+#ifdef CONFIG_HISI_BLK
+	if (tags->set && tags->set->hisi_tagset_ops &&
+		tags->set->hisi_tagset_ops->tagset_all_tag_busy_iter_fn) {
+		tags->set->hisi_tagset_ops->tagset_all_tag_busy_iter_fn(
+			tags, fn, priv);
+		return ;
+	}
+#endif
 	if (tags->nr_reserved_tags)
 		bt_tags_for_each(tags, &tags->breserved_tags, fn, priv, true);
 	bt_tags_for_each(tags, &tags->bitmap_tags, fn, priv, false);

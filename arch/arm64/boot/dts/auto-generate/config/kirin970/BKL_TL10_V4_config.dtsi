@@ -1,0 +1,104 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "BKL_TL10_V3_config.dtsi"
+
+/ {
+	hisi,boardid = <6 9 1 1>;
+	hisi,boardname = "BKL_TL10_V4";
+	hisi,modem_id = <0x39603400>;
+	hisi,product_name = "BKL-TL10";
+
+	fastboot_charger:fastboot_charger {
+		fastboot_single_phase_buck = <0>;
+		status = "ok";
+	};
+
+	hisi_usb: hisi_usb@ff200000 {
+		dwc3@ff100000 {
+			maximum-speed = "high-speed";
+		};
+	};
+
+	pd_dpm: pd_dpm {
+		status = "ok";
+	};
+
+	charging_core: charging_core {
+		status = "ok";
+		ichg_fcp = <3400>;
+		iin_fcp = <2000>;
+		ichg_ac = <2100>;
+		iin_ac = <2000>;
+	};
+
+	amba {
+		i2c1: i2c@FFD72000 {
+			fusb30x_i2c1@22 {
+				status = "ok";
+				fairchild,int_n = <&gpio27 5 0>;
+			};
+			rt1711_i2c1@4e {
+				reg = <0x4e>;
+				status = "ok";
+				rt1711,irq_pin = <&gpio27 5 0>;
+			};
+			tusb422_i2c1@20 {
+				status = "ok";
+				ti,alert-gpio = <&gpio27 5 0>;
+			};
+		};
+		i2c4: i2c@FDF0D000 {
+			/delete-node/ fusb30x_i2c4@22;
+			/delete-node/ tusb422_i2c4@20;
+			/delete-node/ rt1711_i2c4@4e;
+			tusb320_typec:typec@47{
+					reg = <0x47>;
+					tusb320_typec,gpio_enb = <&gpio1 2 0>;
+					tusb320_typec,gpio_intb = <&gpio27 5 0>;
+					tusb320_gpio_enb = <1>;
+					typec_trigger_otg = <1>;
+					tusb320_mdelay = <50>;
+					status = "disabled";
+			};
+			fusb301_typec: typec@21 {
+					reg = <0x21>;
+					fusb301_typec,gpio_enb = <&gpio1 2 0>;
+					fusb301_typec,gpio_intb = <&gpio27 5 0>;
+					fusb301_gpio_enb = <1>;
+					typec_trigger_otg = <1>;
+					status = "disabled";
+			};
+			pericom30216_typec: typec@1d {
+					reg = <0x1d>;
+					pericom30216_typec,gpio_enb = <&gpio1 2 0>;
+					pericom30216_typec,gpio_intb = <&gpio27 5 0>;
+					pericom30216_gpio_enb = <1>;
+					typec_trigger_otg = <1>;
+					pericom30216_mdelay = <50>;
+					status = "disabled";
+			};
+			ptn5150h_typec: typec@1E {
+					reg = <0x1e>;
+					ptn5150h_typec,gpio_enb = <&gpio1 2 0>;
+					ptn5150h_typec,gpio_intb = <&gpio27 5 0>;
+					ptn5150h_gpio_enb = <1>;
+					typec_trigger_otg = <1>;
+					status = "disabled";
+			};
+		};
+
+		i2c6: i2c@FFD6A000 {
+			hi6523_charger_i2c6: hi6523_charger_i2c6@6B{
+				status = "ok";
+				single_phase_buck = <0>;
+			};
+		};
+	};
+};

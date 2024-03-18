@@ -1,0 +1,176 @@
+/{
+	firmware {
+		android {
+			compatible = "android,firmware";
+			boot_devices ="ff3c0000.ufs";
+			vbmeta {
+				compatible = "android,vbmeta";
+				parts = "vbmeta,kernel,ramdisk,eng_system,eng_vendor,vbmeta_system,vbmeta_vendor,vbmeta_odm,vbmeta_hw_product,vbmeta_cust,version,preload,preas,preavs";
+			};
+			fstab {
+				compatible = "android,fstab";
+				system_ext4 {
+					mnt_point = "/system";
+					dev = "system";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,avb,logical";
+					status = "ok";
+				};
+				system_erofs {
+					mnt_point = "/system";
+					dev = "system";
+					type = "erofs";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,avb,logical";
+					status = "ok";
+				};
+				vendor_ext4 {
+					mnt_point = "/vendor";
+					dev = "vendor";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,avb,logical";
+					status = "ok";
+				};
+				vendor_erofs {
+					mnt_point = "/vendor";
+					dev = "vendor";
+					type = "erofs";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,avb,logical";
+					status = "ok";
+				};
+				odm_ext4 {
+					mnt_point = "/odm";
+					dev = "odm";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,avb,logical";
+					status = "ok";
+				};
+				odm_erofs {
+					mnt_point = "/odm";
+					dev = "odm";
+					type = "erofs";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,avb,logical";
+					status = "ok";
+				};
+				cust_ext4 {
+					mnt_point = "/cust";
+					dev = "cust";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb,logical";
+					status = "ok";
+				};
+				cust_erofs {
+					mnt_point = "/cust";
+					dev = "cust";
+					type = "erofs";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb,logical";
+					status = "ok";
+				};
+				hw_product_ext4 {
+					mnt_point = "/hw_product";
+					dev = "hw_product";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb,logical";
+					status = "ok";
+				};
+				hw_product_erofs {
+					mnt_point = "/hw_product";
+					dev = "hw_product";
+					type = "erofs";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb,logical";
+					status = "ok";
+				};
+				version_ext4 {
+					mnt_point = "/version";
+					dev = "/dev/block/by-name/version";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb";
+					status = "ok";
+				};
+				version_erofs {
+					mnt_point = "/version";
+					dev = "/dev/block/by-name/version";
+					type = "erofs";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb";
+					status = "ok";
+				};
+				preload_ext4 {
+					mnt_point = "/preload";
+					dev = "/dev/block/by-name/preload";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb";
+					status = "ok";
+				};
+				preload_erofs {
+					mnt_point = "/preload";
+					dev = "/dev/block/by-name/preload";
+					type = "erofs";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb";
+					status = "ok";
+				};
+				patch_ext4 {
+					mnt_point = "/patch_hw";
+					dev = "/dev/block/by-name/patch";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb_keys=/patch_avb_key";
+					status = "ok";
+				};
+				patch_erofs {
+					mnt_point = "/patch_hw";
+					dev = "/dev/block/by-name/patch";
+					type = "erofs";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb_keys=/patch_avb_key";
+				};
+				preas_ext4 {
+					mnt_point = "/preas";
+					dev = "/dev/block/by-name/preas";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb";
+					status = "ok";
+				};
+				preas_erofs {
+					mnt_point = "/preas";
+					dev = "/dev/block/by-name/preas";
+					type = "erofs";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb";
+					status = "ok";
+				};
+				preavs_ext4 {
+					mnt_point = "/preavs";
+					dev = "/dev/block/by-name/preavs";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb";
+					status = "ok";
+				};
+				preavs_erofs {
+					mnt_point = "/preavs";
+					dev = "/dev/block/by-name/preavs";
+					type = "erofs";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,nofail,avb";
+					status = "ok";
+				};
+			};
+		};
+	};
+};
+
+

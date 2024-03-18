@@ -1,0 +1,25 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "lcdkit/par_vn1/devkit_lcd.dtsi"
+/include/ "PAR_AL00_VB_config.dtsi"
+/include/ "PAR_AL00_VC_pin.dtsi"
+/include/ "PAR_AL00_VC_sec_pin.dtsi"
+/include/ "PAR_AL00_VC_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 8 5 3>;
+	hisi,boardname = "PAR_AL00_VC";
+	hisi,modem_id = <0x39633C00>;
+	huawei_lcd_panel: huawei,lcd_panel {
+		product_id = <8001>;
+	};
+};

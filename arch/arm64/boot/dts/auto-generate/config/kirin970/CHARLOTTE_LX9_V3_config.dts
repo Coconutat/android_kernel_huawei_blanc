@@ -1,0 +1,37 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "CHARLOTTE_TUGL_V1_config.dtsi"
+/include/ "CHARLOTTE_LX9_V3_pin.dtsi"
+/include/ "CHARLOTTE_LX9_V3_sec_pin.dtsi"
+/include/ "CHARLOTTE_LX9_V3_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 5 3 1>;
+	hisi,boardname = "CHARLOTTE_LX9_V3";
+	hisi,product_id = <0x39033000>;
+	hisi,modem_id = <0x39033000>;
+	hisi,product_name = "CHARLOTTE-LX9";
+	sensorhub{
+		sar_sensor:sar{
+			sar1{
+				status = "ok";
+			};
+			sar2{
+				status = "ok";
+			};
+		};
+	};
+
+	antenna_boardid_detect:antenna_boardid_detect{
+		expect_value = <1>;
+	};
+};

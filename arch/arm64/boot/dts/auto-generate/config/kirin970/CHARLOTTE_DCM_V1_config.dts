@@ -1,0 +1,49 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "CHARLOTTE_LX9_V3_config.dtsi"
+/include/ "CHARLOTTE_DCM_V1_pin.dtsi"
+/include/ "CHARLOTTE_DCM_V1_sec_pin.dtsi"
+/include/ "CHARLOTTE_DCM_V1_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 5 2 4>;
+	hisi,boardname = "CHARLOTTE_DCM_V1";
+	hisi,product_id = <0x39038C00>;
+	hisi,modem_id = <0x39038C00>;
+	hisi,product_name = "CLT-L0J";
+	sensorhub{
+		sar_sensor:sar{
+			sar1{
+				status = "ok";
+			};
+			sar2{
+				status = "ok";
+			};
+		};
+	};
+
+	amba: amba {
+		i2c4: i2c@FDF0D000 {
+			pn547_nfc: nfc@28 {
+				status = "disabled";
+			};
+
+			cxd224x_nfc: nfc2@28 {
+				status = "ok";
+			};
+		};
+	};
+
+	antenna_boardid_detect:antenna_boardid_detect{
+		expect_value = <2>;
+	};
+};

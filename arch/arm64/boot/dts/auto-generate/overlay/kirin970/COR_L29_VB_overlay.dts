@@ -1,0 +1,59 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "COR_AL00_VA_overlay.dtsi"
+
+/ {
+	board_id = <6935>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <119>;
+    hisi,boardid = <6 9 3 5>;
+    hisi,boardname = "COR_L29_VB";
+};
+
+&sensorhub{
+	sar{
+		sar1{
+			status = "ok";
+		};
+	};
+		rpc{
+            		rpc{
+			compatible = "huawei,rpc";
+			file_id = <0x18>;
+			sensor_list_info_id = <24>;
+			sensor_type = "rpc";
+			sensorlist_name = "rpc";
+			mask = <0xFFFF 0x20F 0x20F 0x20F 0x20F 0x20F 0x20F 0x20F
+				0x20F 0x20F 0x20F 0x20F 0x20F 0x20F 0x20F 0xFFFF
+				0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF
+				0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xF 0xFFFF 0xFFFF>;
+			table = <0xFFFF 0x207 0x201 0x202 0x203 0x204 0x205 0x206
+				 0x1 0x2 0x3 0x4 0x5 0x6 0x7 0xFFFF
+				 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF
+				 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0x0 0xFFFF 0xFFFF>;
+			default_value = <0x1D>;
+			status = "ok";
+            };
+        };
+};
+
+&devcheck {
+	nfc = <3>;
+};
+
+&amba {
+	i2c@FDF0C000 {
+		status = "ok";
+	};
+};

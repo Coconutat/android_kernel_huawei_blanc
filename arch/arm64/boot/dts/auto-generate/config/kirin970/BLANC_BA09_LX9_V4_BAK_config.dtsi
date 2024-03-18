@@ -1,0 +1,30 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "BLANC_BA09_LX9_V4_config.dtsi"
+/include/ "huawei_cc_anti_corrosion.dtsi"
+/ {
+	hisi,boardid = <6 4 7 4>;
+	hisi,boardname = "BLANC_BA09_LX9_V4_BAK";
+	hisi,product_id = <0x3901B800>;
+	hisi,modem_id = <0x3901B800>;
+	cc_anti_corrosion: cc_anti_corrosion {
+		compatible = "huawei,cc-anti-corrosion";
+		status = "disabled";
+	};
+
+    huawei,camera_ldo {
+        rear-ldo = "ldo19", "ldo20", "ldo21", "ldo33";
+        rear-ldo-channel = <0x4 0x5 0x6 0x8>;
+        rear-ldo-threshold = <150 150 80 120>;
+        front-ldo = "ldo21", "ldo32";
+        front-ldo-channel = <0x6 0x7>;
+        front-ldo-threshold = <80 150>;
+    };
+};

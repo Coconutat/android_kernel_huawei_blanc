@@ -147,6 +147,9 @@
 #include <net/udp_tunnel.h>
 
 #include "net-sysfs.h"
+#ifdef CONFIG_HW_PACKET_FILTER_BYPASS
+#include <hwnet/booster/hw_packet_filter_bypass.h>
+#endif
 
 /* Instead of increasing this, you should create a hash table. */
 #define MAX_GRO_SKBS 8
@@ -165,6 +168,10 @@ static int call_netdevice_notifiers_info(unsigned long val,
 					 struct net_device *dev,
 					 struct netdev_notifier_info *info);
 static struct napi_struct *napi_by_id(unsigned int napi_id);
+
+#ifdef CONFIG_HW_DC_MODULE
+static struct hw_dc_ops g_dev_dc_ops;
+#endif
 
 /*
  * The @dev_base_head list is protected by @dev_base_lock and the rtnl
@@ -3006,6 +3013,10 @@ static int xmit_one(struct sk_buff *skb, struct net_device *dev,
 
 	len = skb->len;
 	trace_net_dev_start_xmit(skb, dev);
+#ifdef CONFIG_HW_DC_MODULE
+	if (g_dev_dc_ops.dc_send_copy)
+		g_dev_dc_ops.dc_send_copy(skb, dev);
+#endif
 	rc = netdev_start_xmit(skb, dev, txq, more);
 	trace_net_dev_xmit(skb, rc, dev, len);
 
@@ -3555,6 +3566,11 @@ out:
 
 int dev_queue_xmit(struct sk_buff *skb)
 {
+#ifdef CONFIG_HW_PACKET_FILTER_BYPASS
+	if (likely(skb) && likely(skb->sk) && skb_dst(skb))
+		hw_bypass_skb(skb->sk->sk_family, HW_PFB_INET_DEV_XMIT, NULL,
+			skb, NULL, skb_dst(skb)->dev, PASS);
+#endif
 	return __dev_queue_xmit(skb, NULL);
 }
 EXPORT_SYMBOL(dev_queue_xmit);
@@ -3720,6 +3736,9 @@ static int get_rps_cpu(struct net_device *dev, struct sk_buff *skb,
 		 *     have been dequeued, thus preserving in order delivery.
 		 */
 		if (unlikely(tcpu != next_cpu) &&
+#ifdef CONFIG_HISI_RFS_RPS_MATCH
+		    unlikely(!map || cpumask_test_cpu(next_cpu, &map->cpus_mask)) &&
+#endif
 		    (tcpu >= nr_cpu_ids || !cpu_online(tcpu) ||
 		     ((int)(per_cpu(softnet_data, tcpu).input_queue_head -
 		      rflow->last_qtail)) >= 0)) {
@@ -4370,6 +4389,11 @@ another_round:
 
 	__this_cpu_inc(softnet_data.processed);
 
+#ifdef CONFIG_HW_DC_MODULE
+	if (g_dev_dc_ops.dc_receive && g_dev_dc_ops.dc_receive(skb))
+		return NET_RX_DROP;
+#endif
+
 	if (skb->protocol == cpu_to_be16(ETH_P_8021Q) ||
 	    skb->protocol == cpu_to_be16(ETH_P_8021AD)) {
 		skb = skb_vlan_untag(skb);
@@ -4993,10 +5017,6 @@ static void napi_reuse_skb(struct napi_struct *napi, struct sk_buff *skb)
 	skb->vlan_tci = 0;
 	skb->dev = napi->dev;
 	skb->skb_iif = 0;
-
-	/* eth_type_trans() assumes pkt_type is PACKET_HOST */
-	skb->pkt_type = PACKET_HOST;
-
 	skb->encapsulation = 0;
 	skb_shinfo(skb)->gso_type = 0;
 	skb->truesize = SKB_TRUESIZE(skb_end_offset(skb));
@@ -6766,10 +6786,17 @@ int __dev_change_flags(struct net_device *dev, unsigned int flags)
 
 	dev->flags = (flags & (IFF_DEBUG | IFF_NOTRAILERS | IFF_NOARP |
 			       IFF_DYNAMIC | IFF_MULTICAST | IFF_PORTSEL |
+#ifdef CONFIG_MPTCP
+			       IFF_NOMULTIPATH | IFF_MPBACKUP |
+#endif
 			       IFF_AUTOMEDIA)) |
 		     (dev->flags & (IFF_UP | IFF_VOLATILE | IFF_PROMISC |
 				    IFF_ALLMULTI));
 
+#ifdef CONFIG_MPTCP
+	if (old_flags & IFF_NOMULTIPATH)
+		dev->flags |= IFF_NOMULTIPATH;
+#endif
 	/*
 	 *	Load in the correct multicast list now the flags have changed.
 	 */
@@ -7260,7 +7287,7 @@ static netdev_features_t netdev_sync_upper_features(struct net_device *lower,
 	netdev_features_t feature;
 	int feature_bit;
 
-	for_each_netdev_feature(upper_disables, feature_bit) {
+	for_each_netdev_feature(&upper_disables, feature_bit) {
 		feature = __NETIF_F_BIT(feature_bit);
 		if (!(upper->wanted_features & feature)
 		    && (features & feature)) {
@@ -7280,7 +7307,7 @@ static void netdev_sync_lower_features(struct net_device *upper,
 	netdev_features_t feature;
 	int feature_bit;
 
-	for_each_netdev_feature(upper_disables, feature_bit) {
+	for_each_netdev_feature(&upper_disables, feature_bit) {
 		feature = __NETIF_F_BIT(feature_bit);
 		if (!(features & feature) && (lower->features & feature)) {
 			netdev_dbg(upper, "Disabling feature %pNF on lower dev %s.\n",
@@ -8607,6 +8634,26 @@ void func(const struct net_device *dev, const char *fmt, ...)	\
 	va_end(args);						\
 }								\
 EXPORT_SYMBOL(func);
+
+#ifdef CONFIG_HW_DC_MODULE
+int hw_register_dual_connection(struct hw_dc_ops *ops)
+{
+	if (ops == NULL)
+		return -EINVAL;
+	g_dev_dc_ops.dc_send_copy = ops->dc_send_copy;
+	g_dev_dc_ops.dc_receive = ops->dc_receive;
+	return 0;
+}
+EXPORT_SYMBOL(hw_register_dual_connection);
+
+int hw_unregister_dual_connection(void)
+{
+	g_dev_dc_ops.dc_send_copy = NULL;
+	g_dev_dc_ops.dc_receive = NULL;
+	return 0;
+}
+EXPORT_SYMBOL(hw_unregister_dual_connection);
+#endif
 
 define_netdev_printk_level(netdev_emerg, KERN_EMERG);
 define_netdev_printk_level(netdev_alert, KERN_ALERT);

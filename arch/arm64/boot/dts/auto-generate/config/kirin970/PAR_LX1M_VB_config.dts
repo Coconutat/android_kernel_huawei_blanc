@@ -1,0 +1,27 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "PAR_AL00_VA_config.dtsi"
+/include/ "PAR_LX1M_VB_pin.dtsi"
+/include/ "PAR_LX1M_VB_sec_pin.dtsi"
+/include/ "PAR_LX1M_VB_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 8 9 2>;
+	hisi,boardname = "PAR_LX1M_VB";
+	hisi,modem_id = <0x39636800>;
+	hisi,product_name = "PAR-LX1M";
+	/*hisi connectivity customize*/
+	hisi_cust_cfg: hisi_cust_cfg {
+		compatible = "hi1102,customize";
+		ini_file_name = "/vendor/etc/cfg_paris_lx1m_hisi.ini";
+	};
+};

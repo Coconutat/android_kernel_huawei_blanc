@@ -1,0 +1,32 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "CHARLOTTE_DCM_V4_overlay.dtsi"
+/include/ "CHARLOTTE_DCM_VN1_overlay_module_amba.dts"
+
+/ {
+        board_id = <6547>;
+};
+
+&rootparam {
+    hisi,boardid = <6 5 4 7>;
+    hisi,boardname = "CHARLOTTE_DCM_VN1";
+};
+
+
+&sensorhub {
+	light{
+		als1{
+			als_phone_version = <13>;
+		};
+		als2{
+			als_phone_version = <13>;
+		};
+	};
+};

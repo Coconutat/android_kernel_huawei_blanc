@@ -49,6 +49,10 @@
 #include <asm/system_misc.h>
 #include <asm/sysreg.h>
 
+#ifdef CONFIG_HISI_BB
+#include <linux/hisi/rdr_hisi_platform.h>
+#endif
+
 static const char *handler[]= {
 	"Synchronous Abort",
 	"IRQ",
@@ -121,7 +125,7 @@ static void __dump_instr(const char *lvl, struct pt_regs *regs)
 		bad = get_user(val, &((u32 *)addr)[i]);
 
 		if (!bad)
-			p += sprintf(p, i == 0 ? "(%08x) " : "%08x ", val);
+			p += sprintf(p, i == 0 ? "(%08x) " : "%08x ", val);/*[false alarm]:fortify*/
 		else {
 			p += sprintf(p, "bad PC value");
 			break;
@@ -144,8 +148,10 @@ static void dump_instr(const char *lvl, struct pt_regs *regs)
 
 void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 {
+#define MAX_BACKTRACE_COUNT 5
 	struct stackframe frame;
 	int skip = 0;
+	unsigned long last_pc = 0, count = 0;
 
 	pr_debug("%s(regs = %p tsk = %p)\n", __func__, regs, tsk);
 
@@ -182,6 +188,20 @@ void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 
 		/* skip until specified stack frame */
 		if (!skip) {
+
+			/* to solve the dump backtrace infinite loop problem */
+			if (frame.pc == last_pc) {
+				count++;
+				if (count >= MAX_BACKTRACE_COUNT) {
+					pr_err("%s(backtrace infinite loop:fp %p pc %p)\n",
+						__func__, (void *)frame.fp, (void *)frame.pc);
+					break;
+				}
+			} else {
+				last_pc = frame.pc;
+				count = 0;
+			}
+
 			dump_backtrace_entry(frame.pc);
 		} else if (frame.fp == regs->regs[29]) {
 			skip = 0;
@@ -258,12 +278,18 @@ void die(const char *str, struct pt_regs *regs, int err)
 	int ret;
 	unsigned long flags;
 
+#ifdef CONFIG_HUAWEI_PRINTK_CTRL
+	printk_level_setup(LOGLEVEL_DEBUG);
+#endif
 	raw_spin_lock_irqsave(&die_lock, flags);
 
 	oops_enter();
 
 	console_verbose();
 	bust_spinlocks(1);
+#ifdef CONFIG_HISI_BB
+	set_exception_info(instruction_pointer(regs));
+#endif
 	ret = __die(str, err, regs);
 
 	if (regs && kexec_should_crash(current))
@@ -282,6 +308,9 @@ void die(const char *str, struct pt_regs *regs, int err)
 
 	if (ret != NOTIFY_STOP)
 		do_exit(SIGSEGV);
+#ifdef CONFIG_HUAWEI_PRINTK_CTRL
+	printk_level_setup(LOGLEVEL_DEBUG);
+#endif
 }
 
 void arm64_notify_die(const char *str, struct pt_regs *regs,
@@ -325,10 +354,12 @@ static int call_undef_hook(struct pt_regs *regs)
 	int (*fn)(struct pt_regs *regs, u32 instr) = NULL;
 	void __user *pc = (void __user *)instruction_pointer(regs);
 
-	if (!user_mode(regs))
-		return 1;
-
-	if (compat_thumb_mode(regs)) {
+	if (!user_mode(regs)) {
+		__le32 instr_le;
+		if (probe_kernel_address((__force __le32 *)pc, instr_le))
+			goto exit;
+		instr = le32_to_cpu(instr_le);
+	} else if (compat_thumb_mode(regs)) {
 		/* 16-bit Thumb instruction */
 		__le16 instr_le;
 		if (get_user(instr_le, (__le16 __user *)pc))
@@ -382,9 +413,15 @@ static void force_signal_inject(int signal, int code, struct pt_regs *regs,
 
 	if (unhandled_signal(current, signal) &&
 	    show_unhandled_signals_ratelimited()) {
+#ifdef CONFIG_HUAWEI_PRINTK_CTRL
+		printk_level_setup(LOGLEVEL_DEBUG);
+#endif
 		pr_info("%s[%d]: %s: pc=%p\n",
 			current->comm, task_pid_nr(current), desc, pc);
 		dump_instr(KERN_INFO, regs);
+#ifdef CONFIG_HUAWEI_PRINTK_CTRL
+		printk_level_setup(sysctl_printk_level);
+#endif
 	}
 
 	info.si_signo = signal;
@@ -422,11 +459,12 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 		return;
 
 	force_signal_inject(SIGILL, ILL_ILLOPC, regs, 0);
+	BUG_ON(!user_mode(regs));
 }
 
 int cpu_enable_cache_maint_trap(void *__unused)
 {
-	config_sctlr_el1(SCTLR_EL1_UCI, 0);
+	sysreg_clear_set(sctlr_el1, SCTLR_EL1_UCI, 0);
 	return 0;
 }
 

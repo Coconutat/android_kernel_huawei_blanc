@@ -1,0 +1,17 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "COL_AL00_VA_config.dtsi"
+
+/ {
+	hisi,boardid = <6 8 1 1>;
+	hisi,boardname = "COL_TL00_VA";
+	hisi,modem_id = <0x39610800>;
+	hisi,product_name = "COL-TL00";
+};

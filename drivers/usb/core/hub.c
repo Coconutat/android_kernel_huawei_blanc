@@ -35,6 +35,9 @@
 #include "hub.h"
 #include "otg_whitelist.h"
 
+#include <linux/hisi/usb/hisi_usb.h>
+#include "hisi-usb-core.h"
+
 #define USB_VENDOR_GENESYS_LOGIC		0x05e3
 #define HUB_QUIRK_CHECK_PORT_AUTOSUSPEND	0x01
 
@@ -1110,16 +1113,6 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 						   USB_PORT_FEAT_ENABLE);
 		}
 
-		/*
-		 * Add debounce if USB3 link is in polling/link training state.
-		 * Link will automatically transition to Enabled state after
-		 * link training completes.
-		 */
-		if (hub_is_superspeed(hdev) &&
-		    ((portstatus & USB_PORT_STAT_LINK_STATE) ==
-						USB_SS_PORT_LS_POLLING))
-			need_debounce_delay = true;
-
 		/* Clear status-change flags; we'll debounce later */
 		if (portchange & USB_PORT_STAT_C_CONNECTION) {
 			need_debounce_delay = true;
@@ -1744,10 +1737,14 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	 * - If user has indicated to prevent autosuspend by passing
 	 *   usbcore.autosuspend = -1 then keep autosuspend disabled.
 	 */
-#ifdef CONFIG_PM
-	if (hdev->dev.power.autosuspend_delay >= 0)
-		pm_runtime_set_autosuspend_delay(&hdev->dev, 0);
-#endif
+
+	 /*
+	  * The first autosuspend delay can't set 0
+	  * the delay will set to 0 when bus suspend.
+	  *
+	  * - if (hdev->dev.power.autosuspend_delay >= 0)
+	  *	pm_runtime_set_autosuspend_delay(&hdev->dev, 0);
+	  */
 
 	/*
 	 * Hubs have proper suspend/resume support, except for root hubs
@@ -1764,6 +1761,7 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	}
 
 	if (hdev->level == MAX_TOPO_LEVEL) {
+		hw_usb_host_abnormal_event_notify(USB_HOST_EVENT_HUB_TOO_DEEP);
 		dev_err(&intf->dev,
 			"Unsupported bus topology: hub nested too deep\n");
 		return -E2BIG;
@@ -3174,7 +3172,8 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 	}
 
 	/* disable USB2 hardware LPM */
-	usb_disable_usb2_hardware_lpm(udev);
+	if (udev->usb2_hw_lpm_enabled == 1)
+		usb_set_usb2_hardware_lpm(udev, 0);
 
 	if (usb_disable_ltm(udev)) {
 		dev_err(&udev->dev, "Failed to disable LTM before suspend\n.");
@@ -3212,7 +3211,8 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 		usb_enable_ltm(udev);
  err_ltm:
 		/* Try to enable USB2 hardware LPM again */
-		usb_enable_usb2_hardware_lpm(udev);
+		if (udev->usb2_hw_lpm_capable == 1)
+			usb_set_usb2_hardware_lpm(udev, 1);
 
 		if (udev->do_remote_wakeup)
 			(void) usb_disable_remote_wakeup(udev);
@@ -3286,7 +3286,9 @@ static int finish_port_resume(struct usb_device *udev)
 		 * the device will be rediscovered.
 		 */
  retry_reset_resume:
-		if (udev->quirks & USB_QUIRK_RESET)
+		if ((udev->quirks & USB_QUIRK_RESET) ||
+				((udev->quirks & USB_QUIRK_PM_NO_RESET_RESUME) &&
+				 udev->do_dpm_resume))
 			status = -ENODEV;
 		else
 			status = usb_reset_and_verify_device(udev);
@@ -3435,6 +3437,9 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 	}
 
 	usb_lock_port(port_dev);
+	/* PM_EVENT_RESUME: System resume */
+	if (msg.event == PM_EVENT_RESUME)
+		udev->do_dpm_resume = 1;
 
 	/* Skip the initial Clear-Suspend step for a remote wakeup */
 	status = hub_port_status(hub, port1, &portstatus, &portchange);
@@ -3495,11 +3500,13 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 		hub_port_logical_disconnect(hub, port1);
 	} else  {
 		/* Try to enable USB2 hardware LPM */
-		usb_enable_usb2_hardware_lpm(udev);
+		if (udev->usb2_hw_lpm_capable == 1)
+			usb_set_usb2_hardware_lpm(udev, 1);
 
 		/* Try to enable USB3 LTM */
 		usb_enable_ltm(udev);
 	}
+	udev->do_dpm_resume = 0;
 
 	usb_unlock_port(port_dev);
 
@@ -4331,7 +4338,7 @@ static void hub_set_initial_usb2_lpm_policy(struct usb_device *udev)
 	if ((udev->bos->ext_cap->bmAttributes & cpu_to_le32(USB_BESL_SUPPORT)) ||
 			connect_type == USB_PORT_CONNECT_TYPE_HARD_WIRED) {
 		udev->usb2_hw_lpm_allowed = 1;
-		usb_enable_usb2_hardware_lpm(udev);
+		usb_set_usb2_hardware_lpm(udev, 1);
 	}
 }
 
@@ -5231,7 +5238,13 @@ static void hub_event(struct work_struct *work)
 			pm_runtime_get_noresume(&port_dev->dev);
 			pm_runtime_barrier(&port_dev->dev);
 			usb_lock_port(port_dev);
+#ifdef CONFIG_HUAWEI_DOCK_HEADSET_QUIRK
+			if (check_huawei_dock_quirk(hdev, hub, i))
+				port_event(hub, i);
+#else
 			port_event(hub, i);
+#endif
+
 			usb_unlock_port(port_dev);
 			pm_runtime_put_sync(&port_dev->dev);
 		}
@@ -5488,7 +5501,8 @@ static int usb_reset_and_verify_device(struct usb_device *udev)
 	/* Disable USB2 hardware LPM.
 	 * It will be re-enabled by the enumeration process.
 	 */
-	usb_disable_usb2_hardware_lpm(udev);
+	if (udev->usb2_hw_lpm_enabled == 1)
+		usb_set_usb2_hardware_lpm(udev, 0);
 
 	/* Disable LPM and LTM while we reset the device and reinstall the alt
 	 * settings.  Device-initiated LPM settings, and system exit latency
@@ -5598,7 +5612,7 @@ static int usb_reset_and_verify_device(struct usb_device *udev)
 
 done:
 	/* Now that the alt settings are re-installed, enable LTM and LPM. */
-	usb_enable_usb2_hardware_lpm(udev);
+	usb_set_usb2_hardware_lpm(udev, 1);
 	usb_unlocked_enable_lpm(udev);
 	usb_enable_ltm(udev);
 	usb_release_bos_descriptor(udev);
@@ -5606,6 +5620,12 @@ done:
 	return 0;
 
 re_enumerate:
+	/*
+	 * udev->bos may update during reset,
+	 * make sure usb2_hw_lpm_enabled cleared
+	 */
+	if (udev->usb2_hw_lpm_enabled == 1)
+		usb_set_usb2_hardware_lpm(udev, 0);
 	usb_release_bos_descriptor(udev);
 	udev->bos = bos;
 re_enumerate_no_bos:
@@ -5713,7 +5733,10 @@ int usb_reset_device(struct usb_device *udev)
 					cintf->needs_binding = 1;
 			}
 		}
-		usb_unbind_and_rebind_marked_interfaces(udev);
+
+		/* If the reset failed, hub_wq will unbind drivers later */
+		if (ret == 0)
+			usb_unbind_and_rebind_marked_interfaces(udev);
 	}
 
 	usb_autosuspend_device(udev);

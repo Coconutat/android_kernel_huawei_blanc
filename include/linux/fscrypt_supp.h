@@ -2,32 +2,55 @@
 /*
  * fscrypt_supp.h
  *
- * This is included by filesystems configured with encryption support.
+ * Do not include this file directly. Use fscrypt.h instead!
  */
+#ifndef _LINUX_FSCRYPT_H
+#error "Incorrect include of linux/fscrypt_supp.h!"
+#endif
 
 #ifndef _LINUX_FSCRYPT_SUPP_H
 #define _LINUX_FSCRYPT_SUPP_H
 
+#include <linux/mm.h>
+#include <linux/slab.h>
 #include <linux/fscrypt_common.h>
+/*
+ * fscrypt superblock flags
+ */
+#define FS_CFLG_OWN_PAGES (1U << 1)
+
+
+
+static inline bool fscrypt_has_encryption_key(const struct inode *inode)
+{
+        return (inode->i_crypt_info != NULL);
+}
+
+static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
+{
+        return inode->i_sb->s_cop->dummy_context &&
+                inode->i_sb->s_cop->dummy_context(inode);
+}
+
 
 /* crypto.c */
 extern struct kmem_cache *fscrypt_info_cachep;
+extern void fscrypt_enqueue_decrypt_work(struct work_struct *);
 extern struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *, gfp_t);
 extern void fscrypt_release_ctx(struct fscrypt_ctx *);
 extern struct page *fscrypt_encrypt_page(const struct inode *, struct page *,
 						unsigned int, unsigned int,
 						u64, gfp_t);
+extern struct page *fscrypt_encrypt_dio_page(struct inode *, struct page *,
+                                                unsigned int, unsigned int,
+                                                u64, gfp_t);
 extern int fscrypt_decrypt_page(const struct inode *, struct page *, unsigned int,
 				unsigned int, u64);
-extern void fscrypt_restore_control_page(struct page *);
-
-extern const struct dentry_operations fscrypt_d_ops;
-
-static inline void fscrypt_set_d_op(struct dentry *dentry)
-{
-	d_set_d_op(dentry, &fscrypt_d_ops);
-}
-
+extern int fscrypt_decrypt_dio_page(struct inode *, struct page *,
+                                        unsigned int, unsigned int, u64);
+extern void fscrypt_decrypt_bio_pages(struct fscrypt_ctx *, struct bio *);
+extern void fscrypt_decrypt_dio_bio_pages(struct fscrypt_ctx *, struct bio *,
+                                         work_func_t func);
 static inline void fscrypt_set_encrypted_dentry(struct dentry *dentry)
 {
 	spin_lock(&dentry->d_lock);
@@ -35,15 +58,34 @@ static inline void fscrypt_set_encrypted_dentry(struct dentry *dentry)
 	spin_unlock(&dentry->d_lock);
 }
 
+static inline struct page *fscrypt_control_page(struct page *page)
+{
+       return ((struct fscrypt_ctx *)page_private(page))->w.control_page;
+}
+
+extern void fscrypt_restore_control_page(struct page *);
+
 /* policy.c */
 extern int fscrypt_ioctl_set_policy(struct file *, const void __user *);
 extern int fscrypt_ioctl_get_policy(struct file *, void __user *);
 extern int fscrypt_has_permitted_context(struct inode *, struct inode *);
 extern int fscrypt_inherit_context(struct inode *, struct inode *,
 					void *, bool);
+#ifdef CONFIG_HWAA
+extern int hwaa_inherit_context(struct inode *, struct inode *,
+	struct dentry *, void *, bool);
+#endif
+
 /* keyinfo.c */
+extern int fscrypt_set_gcm_key(struct crypto_aead *, const u8 *);
+extern int fscrypt_derive_gcm_key(struct crypto_aead *,
+				const u8 *, u8 *, u8 *, int);
+extern struct key *fscrypt_request_key(const u8 *, const u8 *, int);
 extern int fscrypt_get_encryption_info(struct inode *);
-extern void fscrypt_put_encryption_info(struct inode *, struct fscrypt_info *);
+extern void fscrypt_put_encryption_info(struct inode *);
+#ifdef CONFIG_HWAA
+extern int hwaa_get_context(struct inode *);
+#endif
 
 /* fname.c */
 extern int fscrypt_setup_filename(struct inode *, const struct qstr *,
@@ -54,14 +96,11 @@ static inline void fscrypt_free_filename(struct fscrypt_name *fname)
 	kfree(fname->crypto_buf.name);
 }
 
-extern u32 fscrypt_fname_encrypted_size(const struct inode *, u32);
 extern int fscrypt_fname_alloc_buffer(const struct inode *, u32,
 				struct fscrypt_str *);
 extern void fscrypt_fname_free_buffer(struct fscrypt_str *);
 extern int fscrypt_fname_disk_to_usr(struct inode *, u32, u32,
 			const struct fscrypt_str *, struct fscrypt_str *);
-extern int fscrypt_fname_usr_to_disk(struct inode *, const struct qstr *,
-			struct fscrypt_str *);
 
 #define FSCRYPT_FNAME_MAX_UNDIGESTED_SIZE	32
 
@@ -138,9 +177,30 @@ static inline bool fscrypt_match_name(const struct fscrypt_name *fname,
 }
 
 /* bio.c */
-extern void fscrypt_decrypt_bio_pages(struct fscrypt_ctx *, struct bio *);
+extern void fscrypt_decrypt_bio(struct bio *);
+extern void fscrypt_enqueue_decrypt_bio(struct fscrypt_ctx *ctx,
+					struct bio *bio);
 extern void fscrypt_pullback_bio_page(struct page **, bool);
 extern int fscrypt_zeroout_range(const struct inode *, pgoff_t, sector_t,
 				 unsigned int);
+
+/* hooks.c */
+extern int fscrypt_file_open(struct inode *inode, struct file *filp);
+extern int __fscrypt_prepare_link(struct inode *inode, struct inode *dir);
+extern int __fscrypt_prepare_rename(struct inode *old_dir,
+				    struct dentry *old_dentry,
+				    struct inode *new_dir,
+				    struct dentry *new_dentry,
+				    unsigned int flags);
+extern int __fscrypt_prepare_lookup(struct inode *dir, struct dentry *dentry);
+extern int __fscrypt_prepare_symlink(struct inode *dir, unsigned int len,
+				     unsigned int max_len,
+				     struct fscrypt_str *disk_link);
+extern int __fscrypt_encrypt_symlink(struct inode *inode, const char *target,
+				     unsigned int len,
+				     struct fscrypt_str *disk_link);
+extern const char *fscrypt_get_symlink(struct inode *inode, const void *caddr,
+				       unsigned int max_size,
+				       struct delayed_call *done);
 
 #endif	/* _LINUX_FSCRYPT_SUPP_H */

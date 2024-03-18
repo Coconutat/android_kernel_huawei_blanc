@@ -182,6 +182,7 @@ struct scsi_device {
 	unsigned fix_capacity:1;	/* READ_CAPACITY is too high by 1 */
 	unsigned guess_capacity:1;	/* READ_CAPACITY might be too high by 1 */
 	unsigned retry_hwerror:1;	/* Retry HARDWARE_ERROR */
+	unsigned reset_hwerror:1;       /* Reset HARDWARE_ERROR */
 	unsigned last_sector_bug:1;	/* do not use multisector accesses on
 					   SD_LAST_BUGGY_SECTORS */
 	unsigned no_read_disc_info:1;	/* Avoid READ_DISC_INFO cmds */
@@ -447,6 +448,8 @@ extern void scsi_autopm_put_device(struct scsi_device *);
 static inline int scsi_autopm_get_device(struct scsi_device *d) { return 0; }
 static inline void scsi_autopm_put_device(struct scsi_device *d) {}
 #endif /* CONFIG_PM */
+extern void __set_quiesce_for_each_device(struct Scsi_Host *shost);
+extern void __clr_quiesce_for_each_device(struct Scsi_Host *shost);
 
 static inline int __must_check scsi_device_reprobe(struct scsi_device *sdev)
 {

@@ -1,0 +1,40 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "COR_AL00_VA_config.dtsi"
+/include/ "COR_L29_VB_pin.dtsi"
+/include/ "COR_L29_VB_sec_pin.dtsi"
+/include/ "COR_L29_VB_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 9 3 5>;
+	hisi,boardname = "COR_L29_VB";
+	hisi,modem_id = <0x39643C00>;
+	hisi,product_name = "COR-L29";
+
+	amba: amba {
+		i2c3: i2c@FDF0C000 {
+			status = "ok";
+			pn547_nfc: nfc@28{
+				status = "ok";
+			};
+		};
+	};
+	/*hisi connectivity customize*/
+	hisi_cust_cfg: hisi_cust_cfg {
+		compatible = "hi1102,customize";
+		ini_file_name = "/vendor/etc/cfg_cor_lx9_hisi.ini";
+	};
+
+	nfc_exist: nfc_exist {
+		nfc_exist_flag = "1";
+	};
+};

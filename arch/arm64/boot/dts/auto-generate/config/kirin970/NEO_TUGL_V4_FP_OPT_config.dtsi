@@ -1,0 +1,23 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "huawei_cc_anti_corrosion.dtsi"
+/include/ "NEO_TUGL_V3_FP_OPT_config.dtsi"
+
+/ {
+	hisi,boardid = <6 4 9 0>;
+	hisi,boardname = "NEO_TUGL_V4_FP_OPT";
+	hisi,modem_id = <0x39041000>;
+	hisi,product_id = <0x39041000>;
+	hisi,product_name = "NEO-AL00";
+
+	cc_anti_corrosion: cc_anti_corrosion {
+		status = "disabled";
+	};
+};

@@ -1,0 +1,42 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "BLANC_TUGL_V3_9688_overlay.dtsi"
+
+/ {
+	board_id = <6456>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <77>;
+    hisi,boardid = <6 4 5 6>;
+    hisi,boardname = "BLANC_TUGL_VN1_WIFI_PMIC_RF";
+};
+
+
+&fastboot_pmic {
+	hisilicon,init-reg-num = <3>;
+	hisilicon,init-reg-addrs = <0x038 0x10c 0x119>;
+	hisilicon,init-reg-vals  = <0x0 0x1 0x4>;
+};
+
+&bcm_wifi {
+	wifi_fw_test_name = "/vendor/firmware/fw_bcm4359_nonsig_384.bin";
+	wifi_fw_ap_name = "/vendor/firmware/fw_bcm4359_apsta_hw_384.bin";
+	wifi_fw_name = "/vendor/firmware/fw_bcm4359_hw_384.bin";
+	wifi_nvram_name = "/vendor/firmware/nvram4359_hw_blanc384_v1.txt";
+};
+
+&bcm_bt {
+	ic_type = "bcm4359";
+	bt_fw_type = "pmic";
+	status = "ok";
+};

@@ -1,0 +1,26 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "COR_L29_VD_overlay.dtsi"
+
+/ {
+	board_id = <6949>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <124>;
+    hisi,boardid = <6 9 4 9>;
+    hisi,boardname = "COR_L29_VE";
+};
+
+	&invert_hs {
+		status = "disabled";
+	};

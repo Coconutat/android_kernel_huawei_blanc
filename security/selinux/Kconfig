@@ -99,3 +99,32 @@ config SECURITY_SELINUX_CHECKREQPROT_VALUE
 	  via /selinux/checkreqprot if authorized by policy.
 
 	  If you are unsure how to answer this question, answer 0.
+
+config HISI_SELINUX_EBITMAP_RO
+        bool "Protect extensible bitmaps used to represent the SE Linux policy DB"
+        select HISI_PMALLOC
+        default n
+        help
+          Those extensible bitmaps that are used to store parts of the policy DB are
+          protected and marked read-only, when the option is enabled.
+
+config HISI_SELINUX_PROT
+        bool "Enable protection for SELinux policy DB"
+        select HISI_PMALLOC
+        select HISI_SELINUX_EBITMAP_RO
+        default n
+        help
+          Adds hardening to various data structures, that are both constant
+          and semi-constant in nature.
+          Also loads into a special memory pool the data structures created
+          when receiveing in input the policy description.
+          The pool is write-protected, once loading is complete.
+
+config SECURITY_SELINUX_TRACE_LOG
+        bool "Enable call trace for SELinux avc log"
+        default n
+        help
+          This option adds call trace print for SELinux avc denied
+          in kernel log.
+          And it can only print one kind of avc denied warning
+          by using config.

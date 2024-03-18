@@ -23,6 +23,9 @@
 #include <net/busy_poll.h>
 #include <net/pkt_sched.h>
 
+#ifdef CONFIG_HUAWEI_BASTET
+extern int g_FastGrabDscp;
+#endif
 static int zero = 0;
 static int one = 1;
 static int min_sndbuf = SOCK_MIN_SNDBUF;
@@ -467,6 +470,15 @@ static struct ctl_table net_core_table[] = {
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 	},
+#ifdef CONFIG_HUAWEI_BASTET
+	{
+		.procname	= "fg_dscp",
+		.data		= &g_FastGrabDscp,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec
+	},
+#endif
 	{ }
 };
 

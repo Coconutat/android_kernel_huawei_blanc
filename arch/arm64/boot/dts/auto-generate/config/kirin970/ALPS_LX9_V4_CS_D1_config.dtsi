@@ -1,0 +1,41 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "ALPS_LX9_V3_CS_2LANE_config.dtsi"
+
+/ {
+	hisi,boardid = <6 4 1 6>;
+	hisi,boardname = "ALPS_LX9_V4_CS_D1";
+	hisi,product_id = <0x39003800>;
+	hisi,modem_id = <0x39003800>;
+	direct_charger: direct_charger{
+		scp_work_on_charger = <0>;
+		status = "ok";
+	};
+	amba {
+		i2c6: i2c@FFD6A000 {
+			hi6523_charger_i2c6: hi6523_charger_i2c6@6B{
+				status = "ok";
+				fcp_support = <0>;
+				scp_support = <0>;
+				scp_need_extra_power = <0>;
+			};
+			fairchild_fsa9685_i2c6: fsa9685_i2c6@25{
+				status = "ok";
+			};
+		};
+	};
+	devcheck: devcheck {
+		usb_switch = <1>;
+		status = "ok";
+	};
+	hisi_usb: hisi_usb@ff200000 {
+		set_hi_impedance = <0x1>;
+	};
+};

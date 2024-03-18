@@ -1,0 +1,182 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "NEO_TUGL_V2_overlay.dtsi"
+
+/ {
+        board_id = <6484>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <3>;
+    hisi,boardid = <6 4 8 4>;
+    hisi,boardname = "NEO_TUGL_V2_FP";
+};
+
+
+&fingerprint {
+	spi-max-frequency = <5000000>;
+	fingerprint,product = "neo";
+
+	fingerprint,navigation_adjust1 = <1>;
+	fingerprint,navigation_adjust2 = <0>;
+
+	fingerprint,fpc2050 = <1>;
+	fingerprint,reset_gpio = <211>;
+	fingerprint,irq_gpio = <147>;
+	fingerprint,cs_gpio = <216>;
+	fingerprint,spi_num = <2>;
+	fingerprint,force_storage_type = <1>;
+	fingerprint,sensor_type = <772>;
+	fingerprint,top_left_corner_x = <435>;
+	fingerprint,top_left_corner_y = <630>;
+	fingerprint,bottom_right_corner_x = <565>;
+	fingerprint,bottom_right_corner_y = <664>;
+	fingerprint,tp_hover_support = <1>;
+	pinctrl-names = "default", "idle";
+};
+
+&dp_aux_switch {
+    aux_switch_from_fsa4476;
+    status = "ok";
+};
+
+&smartpakit{
+    dsp_img_name = "hifi_6403_tfa9874_devkit.img";
+    status = "ok";
+};
+
+&amba {
+    i2c@FDF0D000 {
+        nfc@28 {
+            clk_status ="xtal";
+        };
+        smartpa@4C{
+            status = "disabled";
+        };
+        smartpa@4F{
+            status = "disabled";
+        };
+        tfa9874_smartpa_l:smartpa@34{
+            compatible = "huawei,smartpakit_i2c";
+            reg = <0x34>;
+            /* 0 MAXIM, 1 NXP, 2 TI, 3 OTHER */
+            chip_vendor = <1>;
+            /* refer to smartpakit.out_device prop */
+            chip_id = <0>;
+            chip_model = "tfa9874";
+            status = "ok";
+
+            /* reg_ctl node: a node contains three data<addr value ctl_type>
+            * ctl_type: 0 read reg(default), 1 write reg, 2 only time delay
+            * value:
+            *     read:  reg number(num >= 1)
+            *     write: reg value
+            *     delay: time delay
+            * time delay unit: msecs */
+            version_regs = <0x03 1 0>;
+            dump_regs = <0 256 0>;
+
+            hw_reset {
+                gpio_reset = <134>;
+                /* gpio_state node: a node contains two data<state delay>
+                * time delay unit: msecs */
+                ctl_sequence = <1 1 0 1>;
+            };
+
+            irq_handler {
+                gpio_irq = <200>;
+                /* 0x0 IRQF_TRIGGER_NONE, 0x1 IRQF_TRIGGER_RISING, 0x2 IRQF_TRIGGER_FALLING, 0x4 IRQF_TRIGGER_HIGH, 0x8 IRQF_TRIGGER_LOW*/
+                irq_flags = <2>;
+                /* whether or not need reset chip*/
+                need_reset;
+                rw_sequence = <
+                    0x10 1 0
+                    0x11 1 0
+                    0x13 1 0
+                    0x14 1 0
+                    0x40 1 0
+                    0x41 1 0
+                    0x42 1 0
+                >;
+            };
+
+            regmap_cfg {
+                reg_bits = <8>;
+                val_bits = <16>;
+                /* 0 REGCACHE_NONE, 1 REGCACHE_RBTREE, 2 REGCACHE_COMPRESSED, 3 REGCACHE_FLAT */
+                cache_type = <0>;
+                max_register = <0xff>;
+                reg_defaults = <
+                    0x00 0x1801
+                    0x01 0x0014
+                >;
+            };
+        };
+
+        tfa9874_smartpa_r:smartpa@36{
+            compatible = "huawei,smartpakit_i2c";
+            reg = <0x36>;
+            /* 0 MAXIM, 1 NXP, 2 TI, 3 OTHER */
+            chip_vendor = <1>;
+            /* refer to smartpakit.out_device prop */
+            chip_id = <1>;
+            chip_model = "tfa9874";
+            status = "ok";
+
+            /* reg_ctl node: a node contains three data<addr value ctl_type>
+            * ctl_type: 0 read reg(default), 1 write reg, 2 only time delay
+            * value:
+            *     read:  reg number(num >= 1)
+            *     write: reg value
+            *     delay: time delay
+            * time delay unit: msecs */
+            version_regs = <0x03 1 0>;
+            dump_regs = <0 256 0>;
+
+            hw_reset {
+                gpio_reset = <163>;
+                /* gpio_state node: a node contains two data<state delay>
+                * time delay unit: msecs */
+                ctl_sequence = <1 1 0 1>;
+            };
+
+            irq_handler {
+                gpio_irq = <184>;
+                /* 0x0 IRQF_TRIGGER_NONE, 0x1 IRQF_TRIGGER_RISING, 0x2 IRQF_TRIGGER_FALLING, 0x4 IRQF_TRIGGER_HIGH, 0x8 IRQF_TRIGGER_LOW*/
+                irq_flags = <2>;
+                /* whether or not need reset chip*/
+                need_reset;
+                rw_sequence = <
+                    0x10 1 0
+                    0x11 1 0
+                    0x13 1 0
+                    0x14 1 0
+                    0x40 1 0
+                    0x41 1 0
+                    0x42 1 0
+                >;
+            };
+
+            regmap_cfg {
+                reg_bits = <8>;
+                val_bits = <16>;
+                /* 0 REGCACHE_NONE, 1 REGCACHE_RBTREE, 2 REGCACHE_COMPRESSED, 3 REGCACHE_FLAT */
+                cache_type = <0>;
+                max_register = <0xff>;
+                reg_defaults = <
+                    0x00 0x1801
+                    0x01 0x0014
+                >;
+            };
+        };
+    };
+};

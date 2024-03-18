@@ -26,15 +26,8 @@
 #include <linux/namei.h>
 #include "fscrypt_private.h"
 
-/*
- * Call fscrypt_decrypt_page on every single page, reusing the encryption
- * context.
- */
-static void completion_pages(struct work_struct *work)
+static void __fscrypt_decrypt_bio(struct bio *bio, bool done)
 {
-	struct fscrypt_ctx *ctx =
-		container_of(work, struct fscrypt_ctx, r.work);
-	struct bio *bio = ctx->r.bio;
 	struct bio_vec *bv;
 	int i;
 
@@ -46,22 +39,51 @@ static void completion_pages(struct work_struct *work)
 		if (ret) {
 			WARN_ON_ONCE(1);
 			SetPageError(page);
-		} else {
+		} else if (done) {
 			SetPageUptodate(page);
 		}
-		unlock_page(page);
+		if (done)
+			unlock_page(page);
 	}
+}
+
+void fscrypt_decrypt_bio(struct bio *bio)
+{
+	__fscrypt_decrypt_bio(bio, false);
+}
+EXPORT_SYMBOL(fscrypt_decrypt_bio);
+
+static void completion_pages(struct work_struct *work)
+{
+	struct fscrypt_ctx *ctx =
+		container_of(work, struct fscrypt_ctx, r.work);
+	struct bio *bio = ctx->r.bio;
+
+	__fscrypt_decrypt_bio(bio, true);
 	fscrypt_release_ctx(ctx);
 	bio_put(bio);
 }
 
-void fscrypt_decrypt_bio_pages(struct fscrypt_ctx *ctx, struct bio *bio)
+static inline void do_decrypt_dio_bio_pages(struct fscrypt_ctx *ctx,
+					   struct bio *bio, work_func_t func)
 {
-	INIT_WORK(&ctx->r.work, completion_pages);
+	INIT_WORK(&ctx->r.work, func);
 	ctx->r.bio = bio;
-	queue_work(fscrypt_read_workqueue, &ctx->r.work);
+	fscrypt_enqueue_decrypt_work(&ctx->r.work);
 }
-EXPORT_SYMBOL(fscrypt_decrypt_bio_pages);
+
+void fscrypt_enqueue_decrypt_bio(struct fscrypt_ctx *ctx, struct bio *bio)
+{
+	do_decrypt_dio_bio_pages(ctx, bio, completion_pages);
+}
+EXPORT_SYMBOL(fscrypt_enqueue_decrypt_bio);
+
+void fscrypt_decrypt_dio_bio_pages(struct fscrypt_ctx *ctx, struct bio *bio,
+				  work_func_t func)
+{
+	do_decrypt_dio_bio_pages(ctx, bio, func);
+}
+EXPORT_SYMBOL(fscrypt_decrypt_dio_bio_pages);
 
 void fscrypt_pullback_bio_page(struct page **page, bool restore)
 {

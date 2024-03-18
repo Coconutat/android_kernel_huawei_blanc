@@ -61,6 +61,14 @@ config SPARSEMEM_MANUAL
 
 endchoice
 
+config SHRINK_MEMORY
+	bool "Allow for system-wide shrinking of memory"
+	default n
+	depends on MMU
+	help
+	It ebable support for system-wide memory reclaim in one shot using
+	echo 1 > /proc/sys/vm/shrink_memory
+
 config DISCONTIGMEM
 	def_bool y
 	depends on (!SELECT_MEMORY_MODEL && ARCH_DISCONTIGMEM_ENABLE) || DISCONTIGMEM_MANUAL
@@ -516,6 +524,18 @@ config CMA_DEBUGFS
 	help
 	  Turns on the DebugFS interface for CMA.
 
+config HISI_CMA_DEBUG
+	bool "Hisilicon CMA debug log"
+	depends on CMA
+	help
+	  Turns on the debug log for hisilicon cma_alloc fail.
+
+config HISI_CMA_RECORD_DEBUG
+	bool "Hisilicon record CMA alloc/release log (DEVELOPMENT)"
+	depends on HISI_CMA_DEBUG && CMA
+	help
+	  Turns on the debug log for record hisilicon cma_alloc/release details.
+
 config CMA_AREAS
 	int "Maximum count of the CMA areas"
 	depends on CMA
@@ -757,3 +777,95 @@ config PERCPU_STATS
 	  This feature collects and exposes statistics via debugfs. The
 	  information includes global and per chunk statistics, which can
 	  be used to help understand percpu memory usage.
+
+config HISI_DIRECT_SWAPPINESS
+	bool "Allow to adjust direct reclaim swappiness"
+	depends on SWAP && PROC_FS
+	default n
+	help
+	  Used to adjust direct reclaim cmpress priority by /proc/sys/vm/direct_swappiness.
+	  only 0 to 60 is valid. If unsure, say N to use it's original value(60).
+
+config HISI_PAGECACHE_HELPER
+	tristate "KIRIN page cache helper module"
+	default n
+
+	---help---
+	This selects the Kirin page cache helper module.
+
+	Select this if you want to optimize your Android system.
+	If unsure, say N.
+
+config HISI_PAGECACHE_DEBUG
+	tristate "KIRIN page cache trace module"
+	default n
+	depends on HISI_DEBUG_FS
+
+	---help---
+	This selects the Kirin page cache trace module.
+
+	Select this if you want to optimize your Android system.
+	If unsure, say N.
+
+config HISI_EARLY_RODATA_PROTECTION
+	bool "Write protect const data as early as possible in the boot sequence"
+	default y
+	help
+	  The really constant data doesn't need to wait for completing init, to be protected.
+
+source "mm/hisi/Kconfig"
+
+config PROCESS_RECLAIM
+	bool "Enable process reclaim"
+	depends on PROC_FS
+	default n
+	help
+	 It allows to reclaim pages of the process by /proc/pid/reclaim.
+
+	 (echo file > /proc/PID/reclaim) reclaims file-backed pages only.
+	 (echo anon > /proc/PID/reclaim) reclaims anonymous pages only.
+	 (echo all > /proc/PID/reclaim) reclaims all pages.
+
+	 (echo addr size-byte > /proc/PID/reclaim) reclaims pages in
+	 (addr, addr + size-bytes) of the process.
+
+	 Any other vaule is ignored.
+
+config HISI_SWAP_ZDATA
+	bool "Compressed data to swap"
+	depends on SWAP
+	depends on PROCESS_RECLAIM
+	default n
+	help
+	  Save compressed data to swap page.
+
+	  If unsure, say Y to enable swap_zdata.
+
+config SPECULATIVE_PAGE_FAULT
+	bool "Speculative page faults"
+	default n
+	depends on MMU && SMP
+	help
+	 Try to handle user space page faults without holding the mmap_sem.
+
+	 This should allow better concurrency for massively threaded process
+	 since the page fault handler will not wait for other threads memory
+	 layout change to be done, assuming that this change is done in another
+	 part of the process's memory space. This type of page fault is named
+	 speculative page fault.
+
+	 If the speculative page fault fails because of a concurrency is
+	 detected or because underlying PMD or PTE tables are not yet
+	 allocating, it is failing its processing and a classic page fault
+	 is then tried.
+
+config HUAWEI_PROMM
+	bool "Enable Fine Reclaim"
+	default n
+
+config ISOLATE_COUNT
+	bool "count isolate pages"
+	default n
+	help
+	  count where isolate pages come from: process reclaim, compaction & cma_alloc
+	  or shrink_(in)active_list.

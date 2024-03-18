@@ -43,6 +43,10 @@ struct cpuidle_state {
 	unsigned int	exit_latency; /* in US */
 	int		power_usage; /* in mW */
 	unsigned int	target_residency; /* in US */
+#ifdef CONFIG_HISI_CPUIDLE_LP_MODE
+	unsigned int	lp_exit_latency; /* in US */
+	unsigned int	lp_target_residency; /* in US */
+#endif
 	bool		disabled; /* disabled on all CPUs */
 
 	int (*enter)	(struct cpuidle_device *dev,
@@ -131,7 +135,8 @@ extern bool cpuidle_not_available(struct cpuidle_driver *drv,
 				  struct cpuidle_device *dev);
 
 extern int cpuidle_select(struct cpuidle_driver *drv,
-			  struct cpuidle_device *dev);
+			  struct cpuidle_device *dev,
+			  bool *stop_tick);
 extern int cpuidle_enter(struct cpuidle_driver *drv,
 			 struct cpuidle_device *dev, int index);
 extern void cpuidle_reflect(struct cpuidle_device *dev, int index);
@@ -163,7 +168,7 @@ static inline bool cpuidle_not_available(struct cpuidle_driver *drv,
 					 struct cpuidle_device *dev)
 {return true; }
 static inline int cpuidle_select(struct cpuidle_driver *drv,
-				 struct cpuidle_device *dev)
+				 struct cpuidle_device *dev, bool *stop_tick)
 {return -ENODEV; }
 static inline int cpuidle_enter(struct cpuidle_driver *drv,
 				struct cpuidle_device *dev, int index)
@@ -214,7 +219,7 @@ static inline void cpuidle_use_deepest_state(bool enable)
 #endif
 
 /* kernel/sched/idle.c */
-extern void sched_idle_set_state(struct cpuidle_state *idle_state);
+extern void sched_idle_set_state(struct cpuidle_state *idle_state, int index);
 extern void default_idle_call(void);
 
 #ifdef CONFIG_ARCH_NEEDS_CPU_IDLE_COUPLED
@@ -246,9 +251,36 @@ struct cpuidle_governor {
 					struct cpuidle_device *dev);
 
 	int  (*select)		(struct cpuidle_driver *drv,
-					struct cpuidle_device *dev);
+					struct cpuidle_device *dev,
+					bool *stop_tick);
 	void (*reflect)		(struct cpuidle_device *dev, int index);
 };
+
+
+#ifdef CONFIG_HISI_CPUIDLE_MENU_GOV_HIST
+struct menu_hist_cstate_data {
+	int	idle_state_idx;
+	int	org_state_idx;
+	unsigned int	residency_us;
+	s64	exit_time;
+};
+
+struct menu_hist_state_info {
+	unsigned int	same_state_failed_count;
+	u64	same_state_failed_us;
+
+	unsigned int	min_residency_us;
+	unsigned int	total_count;
+	u64	total_residency_us;
+	u64	total_us;
+
+	u64	last_run_us;
+};
+#endif
+#ifdef CONFIG_HISI_CPUIDLE_LP_MODE
+extern int get_lp_mode(void);
+extern void cpuidle_switch_to_lp_mode(int enabled);
+#endif
 
 #ifdef CONFIG_CPU_IDLE
 extern int cpuidle_register_governor(struct cpuidle_governor *gov);

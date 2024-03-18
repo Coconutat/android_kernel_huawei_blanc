@@ -674,7 +674,8 @@ sdev_store_timeout (struct device *dev, struct device_attribute *attr,
 	int timeout;
 	sdev = to_scsi_device(dev);
 	sscanf (buf, "%d\n", &timeout);
-	blk_queue_rq_timeout(sdev->request_queue, timeout * HZ);
+	if (timeout > 0 && timeout < INT_MAX / HZ)
+		blk_queue_rq_timeout(sdev->request_queue, timeout * HZ);
 	return count;
 }
 static DEVICE_ATTR(timeout, S_IRUGO | S_IWUSR, sdev_show_timeout, sdev_store_timeout);

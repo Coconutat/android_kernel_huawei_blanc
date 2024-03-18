@@ -1,0 +1,35 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "ALPS_TUGL_V4_CS_CD23_config.dtsi"
+/include/ "ALPS_TUGL_VN1_CS_JDI_pin.dtsi"
+/include/ "ALPS_TUGL_VN1_CS_JDI_sec_pin.dtsi"
+/include/ "ALPS_TUGL_VN1_CS_JDI_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 4 2 0>;
+	hisi,boardname = "ALPS_TUGL_VN1_CS_JDI";
+	hisi,product_id = <0x39004400>;
+	hisi,modem_id = <0x39004400>;
+	huawei,lcd_panel {
+		product_id = <1002>;
+	};
+	sensorhub{
+		als_sensor:light{
+			als1{
+				als_phone_version = <12>;
+			};
+			als2{
+				als_phone_version = <12>;
+			};
+		};
+	};
+};

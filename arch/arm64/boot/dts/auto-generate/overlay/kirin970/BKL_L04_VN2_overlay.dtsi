@@ -1,0 +1,20 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "BKL_L04_V1_overlay.dtsi"
+
+/ {
+	board_id = <6920>;
+};
+
+&rootparam {
+    hisi,boardid = <6 9 2 0>;
+    hisi,boardname = "BKL_L04_VN2";
+};
+

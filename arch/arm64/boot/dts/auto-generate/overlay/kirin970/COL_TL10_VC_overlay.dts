@@ -1,0 +1,27 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "COL_TL10_VB_overlay.dtsi"
+
+/ {
+	board_id = <6816>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <183>;
+    hisi,boardid = <6 8 1 6>;
+    hisi,boardname = "COL_TL10_VC";
+};
+
+&antenna_board_adc_match{
+	antenna_board_match_range = <1700 1875>;
+	status = "ok";
+};

@@ -212,6 +212,9 @@ void blk_queue_split(struct request_queue *q, struct bio **bio)
 		split->bi_opf |= REQ_NOMERGE;
 
 		bio_chain(split, *bio);
+#ifdef CONFIG_HISI_BLK
+		hisi_blk_bio_queue_split(q, bio, split);
+#endif
 		trace_block_split(q, split, (*bio)->bi_iter.bi_sector);
 		generic_make_request(*bio);
 		*bio = split;
@@ -711,6 +714,11 @@ static struct request *attempt_merge(struct request_queue *q,
 	} else if (!ll_merge_requests_fn(q, req, next))
 		return NULL;
 
+#ifdef CONFIG_HISI_BLK
+	if (!hisi_blk_bio_merge_allow(req, next->bio))
+		return 0;
+#endif
+
 	/*
 	 * If failfast settings disagree or any of the two is already
 	 * a mixed merge, mark both as mixed before proceeding.  This
@@ -738,8 +746,12 @@ static struct request *attempt_merge(struct request_queue *q,
 
 	req->__data_len += blk_rq_bytes(next);
 
-	if (req_op(req) != REQ_OP_DISCARD)
+	if (req_op(req) != REQ_OP_DISCARD) {
+#ifdef CONFIG_HISI_BLK
+		hisi_blk_bio_merge_done(q, req, next);
+#endif
 		elv_merge_requests(q, req, next);
+	}
 
 	/*
 	 * 'next' is going away, so update stats accordingly
@@ -804,6 +816,10 @@ bool blk_rq_merge_ok(struct request *rq, struct bio *bio)
 
 	if (req_op(rq) != bio_op(bio))
 		return false;
+#ifdef CONFIG_HISI_BLK
+	if (!hisi_blk_bio_merge_allow(rq, bio))
+		return false;
+#endif
 
 	/* different data direction or already started, don't merge */
 	if (bio_data_dir(bio) != rq_data_dir(rq))

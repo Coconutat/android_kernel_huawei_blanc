@@ -19,7 +19,6 @@
 #include <linux/vmalloc.h>
 #include <linux/log2.h>
 #include <linux/dm-kcopyd.h>
-#include <linux/semaphore.h>
 
 #include "dm.h"
 
@@ -106,9 +105,6 @@ struct dm_snapshot {
 	/* The on disk metadata handler */
 	struct dm_exception_store *store;
 
-	/* Maximum number of in-flight COW jobs. */
-	struct semaphore cow_count;
-
 	struct dm_kcopyd_client *kcopyd_client;
 
 	/* Wait for events based on state_bits */
@@ -148,19 +144,6 @@ struct dm_snapshot {
  */
 #define RUNNING_MERGE          0
 #define SHUTDOWN_MERGE         1
-
-/*
- * Maximum number of chunks being copied on write.
- *
- * The value was decided experimentally as a trade-off between memory
- * consumption, stalling the kernel's workqueues and maintaining a high enough
- * throughput.
- */
-#define DEFAULT_COW_THRESHOLD 2048
-
-static int cow_threshold = DEFAULT_COW_THRESHOLD;
-module_param_named(snapshot_cow_threshold, cow_threshold, int, 0644);
-MODULE_PARM_DESC(snapshot_cow_threshold, "Maximum number of chunks being copied on write");
 
 DECLARE_DM_KCOPYD_THROTTLE_WITH_MODULE_PARM(snapshot_copy_throttle,
 		"A percentage of time allocated for copy on write");
@@ -830,6 +813,9 @@ static int init_hash_tables(struct dm_snapshot *s)
 
 	if (hash_size < 64)
 		hash_size = 64;
+	if (!strcmp(s->ti->type->name, "snapshot_read"))
+		hash_size = max_buckets;
+
 	hash_size = rounddown_pow_of_two(hash_size);
 	if (dm_exception_table_init(&s->complete, hash_size,
 				    DM_CHUNK_CONSECUTIVE_BITS))
@@ -1206,8 +1192,6 @@ static int snapshot_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 		goto bad_hash_tables;
 	}
 
-	sema_init(&s->cow_count, (cow_threshold > 0) ? cow_threshold : INT_MAX);
-
 	s->kcopyd_client = dm_kcopyd_client_create(&dm_kcopyd_throttle);
 	if (IS_ERR(s->kcopyd_client)) {
 		r = PTR_ERR(s->kcopyd_client);
@@ -1579,7 +1563,6 @@ static void copy_callback(int read_err, unsigned long write_err, void *context)
 		}
 		list_add(&pe->out_of_order_entry, lh);
 	}
-	up(&s->cow_count);
 }
 
 /*
@@ -1603,7 +1586,6 @@ static void start_copy(struct dm_snap_pending_exception *pe)
 	dest.count = src.count;
 
 	/* Hand over to kcopyd */
-	down(&s->cow_count);
 	dm_kcopyd_copy(s->kcopyd_client, &src, 1, &dest, 0, copy_callback, pe);
 }
 
@@ -1623,7 +1605,6 @@ static void start_full_bio(struct dm_snap_pending_exception *pe,
 	pe->full_bio = bio;
 	pe->full_bio_end_io = bio->bi_end_io;
 
-	down(&s->cow_count);
 	callback_data = dm_kcopyd_prepare_callback(s->kcopyd_client,
 						   copy_callback, pe);
 
@@ -1801,6 +1782,77 @@ out:
 	return r;
 }
 
+static int snapshot_read_map(struct dm_target *ti, struct bio *bio)
+{
+	struct dm_exception *e = NULL;
+	struct dm_snapshot *s = ti->private;
+	int r = DM_MAPIO_REMAPPED;
+	chunk_t chunk;
+	sector_t  sector = bio->bi_iter.bi_sector;
+
+	chunk = sector_to_chunk(s->store, sector);
+
+	/* Full snapshots are not usable */
+	/* To get here the table must be live so s->active is always set. */
+	if (!s->valid)
+		return -EIO;
+
+	/* If the block is already remapped - use that, else remap it */
+	e = dm_lookup_exception(&s->complete, chunk);
+	if (e) {
+		remap_exception(s, e, bio, chunk);
+		goto out;
+	}
+	bio_set_dev(bio, s->origin->bdev);
+out:
+	return r;
+}
+
+/* return value : 0 means success, 1 means error*/
+int snapshot_read_sector_fix(struct dm_target *ti,
+			     struct bio *bio,
+			     sector_t sector,
+			     unsigned int sector_num,
+			     unsigned int *count)
+{
+	struct dm_exception *e = NULL;
+	struct dm_snapshot *s = NULL;
+	int ret = 0;
+	chunk_t chunk;
+	unsigned int cnt = 0;
+	unsigned int max_io;
+	sector_t max_sector;
+
+	if (!ti || !bio || !count)
+		return 1;
+
+	max_io = ti->max_io_len;
+	max_sector = sector + sector_num + max_io;
+	s = ti->private;
+	if (!s->valid)
+		return 1;
+
+	do {
+		chunk = sector_to_chunk(s->store, sector);
+
+		e = dm_lookup_exception(&s->complete, chunk);
+		if (e) {
+			ret = 1;
+			break;
+		}
+		cnt += max_io;
+		sector += max_io;
+	} while (sector <  max_sector);
+	if (!ret) {
+		*count = sector_num;
+	} else if (ret && (cnt > max_io)) {
+		*count = cnt - max_io;
+		ret = 0;
+	}
+
+	return ret;
+}
+
 /*
  * A snapshot-merge target behaves like a combination of a snapshot
  * target and a snapshot-origin target.  It only generates new
@@ -1881,6 +1933,12 @@ static int snapshot_end_io(struct dm_target *ti, struct bio *bio,
 	if (is_bio_tracked(bio))
 		stop_tracking_chunk(s, bio);
 
+	return DM_ENDIO_DONE;
+}
+
+static int snapshot_read_end_io(struct dm_target *ti,
+				struct bio *bio, blk_status_t *error)
+{
 	return DM_ENDIO_DONE;
 }
 
@@ -2423,6 +2481,20 @@ static struct target_type merge_target = {
 	.iterate_devices = snapshot_iterate_devices,
 };
 
+static struct target_type read_target = {
+	.name    = "snapshot_read",
+	.version = {1, 4, 0},
+	.module  = THIS_MODULE,
+	.ctr     = snapshot_ctr,
+	.dtr     = snapshot_dtr,
+	.map     = snapshot_read_map,
+	.end_io  = snapshot_read_end_io,
+	.preresume  = snapshot_preresume,
+	.resume  = snapshot_resume,
+	.status  = snapshot_status,
+	.iterate_devices = snapshot_iterate_devices,
+};
+
 static int __init dm_snapshot_init(void)
 {
 	int r;
@@ -2471,8 +2543,15 @@ static int __init dm_snapshot_init(void)
 		goto bad_register_merge_target;
 	}
 
+	r = dm_register_target(&read_target);
+	if (r < 0) {
+		DMERR("read target register failed %d", r);
+		goto bad_register_read_target;
+	}
 	return 0;
 
+bad_register_read_target:
+	dm_unregister_target(&merge_target);
 bad_register_merge_target:
 	dm_unregister_target(&origin_target);
 bad_register_origin_target:

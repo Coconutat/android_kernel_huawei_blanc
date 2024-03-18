@@ -726,6 +726,11 @@ static int pci_pm_suspend(struct device *dev)
 	struct pci_dev *pci_dev = to_pci_dev(dev);
 	const struct dev_pm_ops *pm = dev->driver ? dev->driver->pm : NULL;
 
+#ifdef CONFIG_PCIE_KIRIN
+	if (kirin_pcie_bypass_pm(pci_dev))
+		return 0;
+#endif
+
 	if (pci_has_legacy_pm_support(pci_dev))
 		return pci_legacy_suspend(dev, PMSG_SUSPEND);
 
@@ -772,6 +777,11 @@ static int pci_pm_suspend_noirq(struct device *dev)
 {
 	struct pci_dev *pci_dev = to_pci_dev(dev);
 	const struct dev_pm_ops *pm = dev->driver ? dev->driver->pm : NULL;
+
+#ifdef CONFIG_PCIE_KIRIN
+	if (kirin_pcie_bypass_pm(pci_dev))
+		return 0;
+#endif
 
 	if (pci_has_legacy_pm_support(pci_dev))
 		return pci_legacy_suspend_late(dev, PMSG_SUSPEND);
@@ -831,6 +841,11 @@ static int pci_pm_resume_noirq(struct device *dev)
 	struct device_driver *drv = dev->driver;
 	int error = 0;
 
+#ifdef CONFIG_PCIE_KIRIN
+	if (kirin_pcie_bypass_pm(pci_dev))
+		return 0;
+#endif
+
 	pci_pm_default_resume_early(pci_dev);
 
 	if (pci_has_legacy_pm_support(pci_dev))
@@ -848,11 +863,21 @@ static int pci_pm_resume(struct device *dev)
 	const struct dev_pm_ops *pm = dev->driver ? dev->driver->pm : NULL;
 	int error = 0;
 
+#ifdef CONFIG_PCIE_KIRIN
+	if (kirin_pcie_bypass_pm(pci_dev))
+		return 0;
+#endif
+
 	/*
 	 * This is necessary for the suspend error path in which resume is
 	 * called without restoring the standard config registers of the device.
 	 */
+#ifndef CONFIG_PCIE_KIRIN
 	if (pci_dev->state_saved)
+#else
+	//bcm vendor id is 0x14e4
+	if (pci_dev->state_saved && pci_dev->vendor != PCI_VENDOR_ID_BROADCOM)
+#endif
 		pci_restore_standard_config(pci_dev);
 
 	if (pci_has_legacy_pm_support(pci_dev))

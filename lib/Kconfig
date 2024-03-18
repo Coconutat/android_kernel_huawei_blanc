@@ -243,10 +243,16 @@ config LZO_DECOMPRESS
 config LZ4_COMPRESS
 	tristate
 
+config LZ4M_COMPRESS
+	tristate
+
 config LZ4HC_COMPRESS
 	tristate
 
 config LZ4_DECOMPRESS
+	tristate
+
+config LZ4M_DECOMPRESS
 	tristate
 
 config ZSTD_COMPRESS
@@ -586,4 +592,9 @@ config PRIME_NUMBERS
 config STRING_SELFTEST
 	bool "Test string functions"
 
+config HISI_SECUREC
+	bool "hisi secure libc"
+	default n
+	help
+	  Say 'Y' hisilicon secure libc support.
 endmenu

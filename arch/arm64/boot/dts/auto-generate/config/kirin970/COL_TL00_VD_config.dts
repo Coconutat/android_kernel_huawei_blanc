@@ -1,0 +1,22 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "huawei_antenna_board_match.dtsi"
+/include/ "COL_TL00_VC_config.dtsi"
+/include/ "COL_TL00_VD_pin.dtsi"
+/include/ "COL_TL00_VD_sec_pin.dtsi"
+/include/ "COL_TL00_VD_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 8 0 9>;
+	hisi,boardname = "COL_TL00_VD";
+	hisi,modem_id = <0x39615800>;
+};

@@ -1,0 +1,19 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "PAR_TL00_VB_overlay.dtsi"
+
+/ {
+	board_id = <6873>;
+};
+&rootparam {
+    hisi,boardid = <6 8 7 3>;
+    hisi,boardname = "PAR_TL00_VC";
+};
+

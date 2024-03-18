@@ -16,6 +16,10 @@
 #include <linux/syscalls.h>
 #include <linux/syscore_ops.h>
 #include <linux/uaccess.h>
+#ifdef CONFIG_HISI_SP805_WATCHDOG
+#include <linux/watchdog.h>
+#define SHUTDOWN_TIMEOUT 30
+#endif
 
 /*
  * this indicates whether you can reboot with ctrl-alt-del: the default is yes
@@ -314,6 +318,9 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 	mutex_lock(&reboot_mutex);
 	switch (cmd) {
 	case LINUX_REBOOT_CMD_RESTART:
+#ifdef CONFIG_HISI_SP805_WATCHDOG
+		watchdog_shutdown_oneshot(SHUTDOWN_TIMEOUT);
+#endif
 		kernel_restart(NULL);
 		break;
 
@@ -331,6 +338,9 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 		panic("cannot halt");
 
 	case LINUX_REBOOT_CMD_POWER_OFF:
+#ifdef CONFIG_HISI_SP805_WATCHDOG
+		watchdog_shutdown_oneshot(SHUTDOWN_TIMEOUT);
+#endif
 		kernel_power_off();
 		do_exit(0);
 		break;
@@ -341,6 +351,9 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 			ret = -EFAULT;
 			break;
 		}
+#ifdef CONFIG_HISI_SP805_WATCHDOG
+		watchdog_shutdown_oneshot(SHUTDOWN_TIMEOUT);
+#endif
 		buffer[sizeof(buffer) - 1] = '\0';
 
 		kernel_restart(buffer);

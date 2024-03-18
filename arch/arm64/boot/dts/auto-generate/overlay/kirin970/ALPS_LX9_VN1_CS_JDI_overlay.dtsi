@@ -1,0 +1,33 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "ALPS_LX9_V4_CS_D1_overlay.dtsi"
+
+/ {
+	board_id = <6419>;
+};
+
+&rootparam {
+    hisi,boardid = <6 4 1 9>;
+    hisi,boardname = "ALPS_LX9_VN1_CS_JDI";
+};
+
+	&huawei_lcd_panel {
+		product_id = <1002>;
+	};
+	&sensorhub{
+		light{
+			als1{
+				als_phone_version = <12>;
+			};
+			als2{
+				als_phone_version = <12>;
+			};
+		};
+	};

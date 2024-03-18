@@ -1,0 +1,39 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "PAR_AL00_VA_config.dtsi"
+/include/ "PAR_LX1_VA_pin.dtsi"
+/include/ "PAR_LX1_VA_sec_pin.dtsi"
+/include/ "PAR_LX1_VA_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 8 6 1>;
+	hisi,boardname = "PAR_LX1_VA";
+	hisi,modem_id = <0x39630A00>;
+	hisi,product_name = "PAR-LX1";
+	/*hisi connectivity customize*/
+	hisi_cust_cfg: hisi_cust_cfg {
+		compatible = "hi1102,customize";
+		ini_file_name = "/vendor/etc/cfg_paris_lx1_hisi.ini";
+	};
+
+	amba: amba {
+		i2c3: i2c@FDF0C000 {
+			pn547_nfc: nfc@28{
+				status = "ok";
+			};
+		};
+	};
+
+	nfc_exist: nfc_exist {
+		nfc_exist_flag = "1";
+	};
+};

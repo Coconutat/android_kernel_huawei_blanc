@@ -222,6 +222,7 @@ struct ffs_io_data {
 
 	struct usb_ep *ep;
 	struct usb_request *req;
+	int req_status;
 
 	struct ffs_data *ffs;
 };
@@ -561,6 +562,12 @@ static ssize_t ffs_ep0_read(struct file *file, char __user *buf,
 
 		spin_unlock_irq(&ffs->ev.waitq.lock);
 
+		if (len > PAGE_SIZE) {
+			pr_err("[%s] read len exceeds PAGE_SIZE\n", __func__);
+			ret = -EINVAL;
+			goto done_mutex;
+		}
+
 		if (likely(len)) {
 			data = kmalloc(len, GFP_KERNEL);
 			if (unlikely(!data)) {
@@ -754,8 +761,7 @@ static void ffs_user_copy_worker(struct work_struct *work)
 {
 	struct ffs_io_data *io_data = container_of(work, struct ffs_io_data,
 						   work);
-	int ret = io_data->req->status ? io_data->req->status :
-					 io_data->req->actual;
+	int ret = io_data->req_status;
 	bool kiocb_has_eventfd = io_data->kiocb->ki_flags & IOCB_EVENTFD;
 
 	if (io_data->read && ret > 0) {
@@ -773,8 +779,6 @@ static void ffs_user_copy_worker(struct work_struct *work)
 	if (io_data->ffs->ffs_eventfd && !kiocb_has_eventfd)
 		eventfd_signal(io_data->ffs->ffs_eventfd, 1);
 
-	usb_ep_free_request(io_data->ep, io_data->req);
-
 	if (io_data->read)
 		kfree(io_data->to_free);
 	kfree(io_data->buf);
@@ -788,6 +792,9 @@ static void ffs_epfile_async_io_complete(struct usb_ep *_ep,
 	struct ffs_data *ffs = io_data->ffs;
 
 	ENTER();
+
+	io_data->req_status = req->status ? req->status : req->actual;
+	usb_ep_free_request(_ep, req);
 
 	INIT_WORK(&io_data->work, ffs_user_copy_worker);
 	queue_work(ffs->io_completion_wq, &io_data->work);
@@ -987,6 +994,7 @@ static ssize_t ffs_epfile_io(struct file *file, struct ffs_io_data *io_data)
 	} else if (!io_data->aio) {
 		DECLARE_COMPLETION_ONSTACK(done);
 		bool interrupted = false;
+		int ep_status;
 
 		req = ep->req;
 		req->buf      = data;
@@ -1013,13 +1021,21 @@ static ssize_t ffs_epfile_io(struct file *file, struct ffs_io_data *io_data)
 			interrupted = ep->status < 0;
 		}
 
+		spin_lock_irq(&epfile->ffs->eps_lock);
+		if (epfile->ep != ep) {
+			ret = -ESHUTDOWN;
+			goto error_lock;
+		} else
+			ep_status = ep->status;
+		spin_unlock_irq(&epfile->ffs->eps_lock);
+
 		if (interrupted)
 			ret = -EINTR;
-		else if (io_data->read && ep->status > 0)
-			ret = __ffs_epfile_read_data(epfile, data, ep->status,
+		else if (io_data->read && ep_status > 0)
+			ret = __ffs_epfile_read_data(epfile, data, ep_status,
 						     &io_data->data);
 		else
-			ret = ep->status;
+			ret = ep_status;
 		goto error_mutex;
 	} else if (!(req = usb_ep_alloc_request(ep->ep, GFP_ATOMIC))) {
 		ret = -ENOMEM;
@@ -1031,6 +1047,7 @@ static ssize_t ffs_epfile_io(struct file *file, struct ffs_io_data *io_data)
 		io_data->ep = ep->ep;
 		io_data->req = req;
 		io_data->ffs = epfile->ffs;
+		io_data->req_status = -EINPROGRESS;
 
 		req->context  = io_data;
 		req->complete = ffs_epfile_async_io_complete;
@@ -1195,7 +1212,6 @@ static long ffs_epfile_ioctl(struct file *file, unsigned code,
 			     unsigned long value)
 {
 	struct ffs_epfile *epfile = file->private_data;
-	struct ffs_ep *ep;
 	int ret;
 
 	ENTER();
@@ -1203,22 +1219,10 @@ static long ffs_epfile_ioctl(struct file *file, unsigned code,
 	if (WARN_ON(epfile->ffs->state != FFS_ACTIVE))
 		return -ENODEV;
 
-	/* Wait for endpoint to be enabled */
-	ep = epfile->ep;
-	if (!ep) {
-		if (file->f_flags & O_NONBLOCK)
-			return -EAGAIN;
-
-		ret = wait_event_interruptible(
-				epfile->ffs->wait, (ep = epfile->ep));
-		if (ret)
-			return -EINTR;
-	}
-
 	spin_lock_irq(&epfile->ffs->eps_lock);
 
 	/* In the meantime, endpoint got disabled or changed. */
-	if (epfile->ep != ep) {
+	if (!epfile->ep) {
 		spin_unlock_irq(&epfile->ffs->eps_lock);
 		return -ESHUTDOWN;
 	}
@@ -3213,7 +3217,7 @@ static int ffs_func_setup(struct usb_function *f,
 	 * types are only handled when the user flag FUNCTIONFS_ALL_CTRL_RECIP
 	 * is being used.
 	 */
-	if (ffs->state != FFS_ACTIVE)
+	if (!ffs || ffs->state != FFS_ACTIVE)
 		return -ENODEV;
 
 	switch (creq->bRequestType & USB_RECIP_MASK) {
@@ -3442,7 +3446,25 @@ static void ffs_func_unbind(struct usb_configuration *c,
 
 	ENTER();
 	if (ffs->func == func) {
+		struct ffs_epfile *epfile = ffs->epfiles;
+		unsigned count            = ffs->eps_count;
+		int ret;
+
 		ffs_func_eps_disable(func);
+
+		/* wait for ffs_epfile_io */
+		while (count--) {
+			if (epfile) {
+				ret = ffs_mutex_lock(&epfile->mutex, 0);
+				if (unlikely(ret))
+					pr_err("wait for epfile mutex failed, count %d\n",
+							count);
+				else
+					mutex_unlock(&epfile->mutex);
+				++epfile;
+			}
+		}
+
 		ffs->func = NULL;
 	}
 

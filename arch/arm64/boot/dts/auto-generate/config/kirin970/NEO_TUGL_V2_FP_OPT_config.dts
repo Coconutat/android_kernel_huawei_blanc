@@ -1,0 +1,22 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "NEO_TUGL_V2_FP_config.dtsi"
+/include/ "NEO_TUGL_V2_FP_OPT_pin.dtsi"
+/include/ "NEO_TUGL_V2_FP_OPT_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 4 8 5>;
+	hisi,boardname = "NEO_TUGL_V2_FP_OPT";
+	hisi,modem_id = <0x39040800>;
+	hisi,product_id = <0x39040800>;
+	hisi,product_name = "NEO-AL00";
+};

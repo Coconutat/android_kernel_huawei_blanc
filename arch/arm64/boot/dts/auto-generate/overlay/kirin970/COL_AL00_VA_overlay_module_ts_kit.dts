@@ -1,0 +1,222 @@
+/*touch_panel*/
+	&ts_kit {
+		bus_type = "i2c";
+		bus_id = <7>;
+		product = "colu";
+		irq_gpio = <&gpio26 4 0>;
+		aft_enable = <1>;
+		fp_tp_enable = <1>;
+		drv_stop_width = <0>;
+		lcd_width = <0>;
+		lcd_height = <0>;
+		fts: touchscreen@38 {
+			compatible = "fts";
+			ic_type = <2>;
+			x_max = <1080>;
+			y_max = <2280>;
+			x_max_mt = <1080>;
+			y_max_mt = <2280>;
+			power_self_ctrl = <1>; /*0-Power is controlled by LCD, 1-Power is self controlled*/
+			pinctrl-names = "default", "idle";
+			pinctrl-0 = <&gpio015_pmx_func &gpio015_pmx_func &gpio212_cfg_func &gpio212_cfg_func>;
+			pinctrl-1 = <&gpio015_pmx_idle &gpio015_pmx_idle &gpio212_cfg_idle &gpio212_cfg_idle>;
+			gesture_supported = <0>;
+			glove_supported = <1>;
+			glove_switch_addr = <0xC0>;
+			vci_value = <3000000>;
+			vddio_value = <1800000>;
+			vci_gpio_type = <0>;
+			vci_regulator_type = <1>;
+			vddio_gpio_type = <0>;
+			vddio_regulator_type = <1>;
+			slave_address = <0x38>;
+			chip_id = <0x54>;
+			hard_reset_delay = <200>;
+			erase_min_delay = <1350>;
+			calc_crc_delay = <300>;
+			reboot_delay = <300>;
+			erase_query_delay = <50>;
+			write_flash_query_times = <30>;
+			read_ecc_query_times = <100>;
+			erase_flash_query_times = <15>;
+			upgrade_loop_times = <5>;
+			fts-vdd-supply = <&ldo17>;
+			fts-io-supply = <&ldo4>;
+			irq_config = <3>;
+			algo_id = <1>;
+			pram_projectid_addr = <0xd7a0>;
+			is_in_cell = <0>;
+			support_get_tp_color = <1>;
+			only_open_once_captest_threshold = <1>;
+			use_lcdkit_power_notify = <1>;
+			projectid_length_control_flag = <1>;
+			enable_edge_touch = <1>;
+			fts_edge_data_addr = <0xB7>;
+			aft_wxy_enable = <1>;
+			roi_supported = <1>;
+			roi_switch_addr = <0xCE>;
+			roi_pkg_num_addr = <0xCF>;
+			holster_supported = <1>;
+			holster_switch_addr = <0xC1>;
+			fts,need_distinguish_lcd = <1>;
+			touch_switch_flag = <2>;
+			touch_switch_game_reg = <0x92>;
+			hide_plain_lcd_log = <1>;
+			COLU53000{
+				producer = "000";
+				ic_type = <2>;
+				compatible = "fts-COLU53000";
+				row_column_delta_test = <0>;
+				lcd_noise_data_test = <1>;
+				row_column_delta_test_point_by_point = <1>;
+				threshold,point_by_point_judge = <1>;
+				threshold,in_csv_file = <1>;
+				provide_panel_id_suppot = <1>;
+			};
+			COLU53060{
+				producer = "060";
+				ic_type = <2>;
+				compatible = "fts-COLU53060";
+				row_column_delta_test = <0>;
+				row_column_delta_test_point_by_point = <1>;
+				lcd_noise_data_test = <1>;
+				threshold,point_by_point_judge = <1>;
+				threshold,in_csv_file = <1>;
+				provide_panel_id_suppot = <1>;
+			};
+			COLU53020{
+				producer = "020";
+				ic_type = <2>;
+				compatible = "fts-COLU53020";
+				row_column_delta_test = <0>;
+				lcd_noise_data_test = <1>;
+				row_column_delta_test_point_by_point = <1>;
+				threshold,point_by_point_judge = <1>;
+				threshold,in_csv_file = <1>;
+				provide_panel_id_suppot = <1>;
+			};
+			COLU53040{
+				producer = "040";
+				ic_type = <2>;
+				compatible = "fts-COLU53040";
+				row_column_delta_test = <0>;
+				lcd_noise_data_test = <1>;
+				row_column_delta_test_point_by_point = <1>;
+				threshold,point_by_point_judge = <1>;
+				threshold,in_csv_file = <1>;
+				provide_panel_id_suppot = <1>;
+			};
+			TM {
+				compatible = "fts-tm";
+				lcd_hide_module_name = "110";
+			};
+			AUO {
+				compatible = "fts-auo";
+				lcd_hide_module_name = "170";
+			};
+			BOE {
+				compatible = "fts-boe";
+				lcd_hide_module_name = "130";
+			};
+			CTC {
+				compatible = "fts-ctc";
+				lcd_hide_module_name = "140";
+			};
+		};
+ 		goodix_kit: ts_kit@14 {
+			compatible = "gt1x";
+			algo_id = <1>;
+			pinctrl-names = "default", "idle";
+			pinctrl-0 = <&gpio015_pmx_func &gpio015_pmx_func &gpio212_cfg_func &gpio212_cfg_func>;
+			pinctrl-1 = <&gpio015_pmx_idle &gpio015_pmx_idle &gpio212_cfg_idle &gpio212_cfg_idle>;
+			vci-supply = <&ldo17>;
+			vddio-supply = <&ldo4>;
+			power_self_ctrl = <1>; /*0-Power is controlled by LCD, 1-Power is self controlled*/
+			vci_power_type = <1>;/*0 - gpio control  1 - ldo  2 - boost & gpio*/
+			vci_ldo_value = <3000000>;
+			vddio_power_type = <1>;/*0 - gpio control  1 - ldo  2 - boost & gpio*/
+			vddio_ldo_need_set = <0>;
+			vddio_ldo_value = <1800000>;
+			slave_address = <0x14>;
+			irq_config = <3>;/* 0 - LOW LEVEL  1 - HIGH LEVEL  2 - RAISE EDGE  3 - FALL EDGE*/
+
+			x_max_mt = <1080>;
+			y_max_mt = <2280>;
+			roi_data_size = <7 7>; /* row and colume*/
+			project_id = "COLU54000";
+			chip_name = "1158"; /* GT1151Q */
+			module_vendor = "ofilm";
+
+			tools_support = <1>; /* support GTP tools APK ,0:no support; 1: support*/
+			roi_supported = <1>;
+			holster_mode_supported = <1>;
+			glove_mode_supported = <1>;
+			easy_wakeup_supported = <0>;
+			charger_supported = <1>;
+			create_project_id_flag = <1>;
+			ic_type = <0>; /* 0: 9PT, 1: 9P*/
+			gt1x_test_limit = <1>;
+			support_get_tp_color = <1>;
+			only_open_once_captest_threshold = <1>;
+			use_lcdkit_power_notify = <1>;
+			gt1x_roi_data_add = <0xA534>;
+			gt1x_roi_fw_supported = <0>;
+			gt1x_edge_add = <0x81A1>;
+			gt1x_support_wxy = <1>;
+			gt1x_wxy_data_add = <0xB9B8>;
+			gt1x_enable_edge_touch = <1>;
+			gt1x_support_edge_xyer = <1>;
+			fw_only_depend_on_lcd = <1>;
+			touch_switch_flag = <2>;
+			hide_plain_lcd_log = <1>;
+			SENSORID2 {
+				compatible = "gt1x-sensorid-2";
+				panel_id = <6>;
+				module_vendor = "060";
+				provide_panel_id_suppot = <1>;
+				project_id = "COLU54060";
+			};
+			SENSORID4 {
+				compatible = "gt1x-sensorid-4";
+				panel_id = <4>;
+				module_vendor = "040";
+				provide_panel_id_suppot = <1>;
+				project_id = "COLU54040";
+			};
+			SENSORID3 {
+				compatible = "gt1x-sensorid-3";
+				panel_id = <2>;
+				module_vendor = "020";
+				provide_panel_id_suppot = <1>;
+				project_id = "COLU54020";
+			};
+			SENSORID0 {
+				compatible = "gt1x-sensorid-0";
+				panel_id = <0>;
+				module_vendor = "000";
+				provide_panel_id_suppot = <1>;
+				project_id = "COLU54000";
+			};
+			TM {
+				compatible = "gt1x-tm";
+				lcd_hide_module_name = "110";
+			};
+			AUO {
+			    compatible = "gt1x-auo";
+			    lcd_hide_module_name = "170";
+			};
+			BOE {
+				compatible = "gt1x-boe";
+				lcd_hide_module_name = "130";
+			};
+			CTC {
+				compatible = "gt1x-ctc";
+				lcd_hide_module_name = "140";
+			};
+			JDI {
+				compatible = "gt1x-jdi";
+				lcd_hide_module_name = "080";
+			};
+		};
+
+	};

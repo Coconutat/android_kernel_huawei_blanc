@@ -73,14 +73,18 @@
  * SPARSEMEM_EXTREME with !SPARSEMEM_VMEMMAP).
  */
 enum pageflags {
+#ifdef CONFIG_HISI_KERNELDUMP
+	PG_memdump,		/* added for kernel dump. */
+#endif
 	PG_locked,		/* Page is locked. Don't touch. */
-	PG_error,
 	PG_referenced,
 	PG_uptodate,
 	PG_dirty,
 	PG_lru,
 	PG_active,
+	PG_workingset,
 	PG_waiters,		/* Page has waiters, check its waitqueue. Must be bit #7 and in the same byte as "PG_locked" */
+	PG_error,
 	PG_slab,
 	PG_owner_priv_1,	/* Owner use. If pagecache, fs may use*/
 	PG_arch_1,
@@ -102,9 +106,29 @@ enum pageflags {
 #ifdef CONFIG_MEMORY_FAILURE
 	PG_hwpoison,		/* hardware poisoned page. Don't touch */
 #endif
+#ifdef CONFIG_TRANSPARENT_HUGEPAGE
+	PG_compound_lock,
+#endif
 #if defined(CONFIG_IDLE_PAGE_TRACKING) && defined(CONFIG_64BIT)
 	PG_young,
 	PG_idle,
+#endif
+#if defined(CONFIG_TASK_PROTECT_LRU) || defined(CONFIG_MEMCG_PROTECT_LRU)
+	PG_protect,
+#endif
+#ifdef CONFIG_HISI_LB
+	PG_lb,
+#endif
+#ifdef CONFIG_HISI_PAGE_TRACE
+	PG_lslub,
+	PG_vmalloc,
+	PG_skb,
+	PG_ion,
+	PG_zspage,
+	PG_drv,
+#endif
+#ifdef CONFIG_ZRAM_NON_COMPRESS
+	PG_non_compress,
 #endif
 	__NR_PAGEFLAGS,
 
@@ -273,6 +297,8 @@ PAGEFLAG(Dirty, dirty, PF_HEAD) TESTSCFLAG(Dirty, dirty, PF_HEAD)
 PAGEFLAG(LRU, lru, PF_HEAD) __CLEARPAGEFLAG(LRU, lru, PF_HEAD)
 PAGEFLAG(Active, active, PF_HEAD) __CLEARPAGEFLAG(Active, active, PF_HEAD)
 	TESTCLEARFLAG(Active, active, PF_HEAD)
+PAGEFLAG(Workingset, workingset, PF_HEAD)
+	TESTCLEARFLAG(Workingset, workingset, PF_HEAD)
 __PAGEFLAG(Slab, slab, PF_NO_TAIL)
 __PAGEFLAG(SlobFree, slob_free, PF_NO_TAIL)
 PAGEFLAG(Checked, checked, PF_NO_COMPOUND)	   /* Used by some filesystems */
@@ -288,6 +314,9 @@ PAGEFLAG(Reserved, reserved, PF_NO_COMPOUND)
 PAGEFLAG(SwapBacked, swapbacked, PF_NO_TAIL)
 	__CLEARPAGEFLAG(SwapBacked, swapbacked, PF_NO_TAIL)
 	__SETPAGEFLAG(SwapBacked, swapbacked, PF_NO_TAIL)
+#ifdef CONFIG_HISI_KERNELDUMP
+PAGEFLAG(MemDump, memdump, PF_ANY);   /*added for kernel dump*/
+#endif
 
 /*
  * Private page markings that may be used by the filesystem that owns the page
@@ -313,6 +342,11 @@ PAGEFLAG(Reclaim, reclaim, PF_NO_TAIL)
 	TESTCLEARFLAG(Reclaim, reclaim, PF_NO_TAIL)
 PAGEFLAG(Readahead, reclaim, PF_NO_COMPOUND)
 	TESTCLEARFLAG(Readahead, reclaim, PF_NO_COMPOUND)
+
+#ifdef CONFIG_ZRAM_NON_COMPRESS
+PAGEFLAG(NonCompress, non_compress, PF_NO_TAIL)
+	TESTSCFLAG(NonCompress, non_compress, PF_NO_TAIL)
+#endif
 
 #ifdef CONFIG_HIGHMEM
 /*
@@ -367,6 +401,9 @@ PAGEFLAG_FALSE(HWPoison)
 #define __PG_HWPOISON 0
 #endif
 
+#if defined(CONFIG_TASK_PROTECT_LRU) || defined(CONFIG_MEMCG_PROTECT_LRU)
+PAGEFLAG(Protect, protect, PF_ANY)
+#endif
 #if defined(CONFIG_IDLE_PAGE_TRACKING) && defined(CONFIG_64BIT)
 TESTPAGEFLAG(Young, young, PF_ANY)
 SETPAGEFLAG(Young, young, PF_ANY)
@@ -374,6 +411,18 @@ TESTCLEARFLAG(Young, young, PF_ANY)
 PAGEFLAG(Idle, idle, PF_ANY)
 #endif
 
+#ifdef CONFIG_HISI_LB
+PAGEFLAG(LB, lb, PF_ANY)
+#endif
+
+#ifdef CONFIG_HISI_PAGE_TRACE
+PAGEFLAG(Lslub, lslub, PF_ANY)
+PAGEFLAG(Vmalloc, vmalloc, PF_ANY)
+PAGEFLAG(ION, ion, PF_ANY)
+PAGEFLAG(SKB, skb, PF_ANY)
+PAGEFLAG(Zspage, zspage, PF_ANY)
+PAGEFLAG(Drv, drv, PF_ANY)
+#endif
 /*
  * On an anonymous page mapped into a user virtual memory area,
  * page->mapping points to its anon_vma, not to a struct address_space;

@@ -54,6 +54,7 @@
 #include <linux/proc_ns.h>
 #include <linux/nsproxy.h>
 #include <linux/file.h>
+#include <linux/psi.h>
 #include <net/sock.h>
 
 #define CREATE_TRACE_POINTS
@@ -187,7 +188,7 @@ static u64 css_serial_nr_next = 1;
  */
 static u16 have_fork_callback __read_mostly;
 static u16 have_exit_callback __read_mostly;
-static u16 have_release_callback __read_mostly;
+static u16 have_free_callback __read_mostly;
 static u16 have_canfork_callback __read_mostly;
 
 /* cgroup namespace for init task */
@@ -794,7 +795,7 @@ static void css_set_move_task(struct task_struct *task,
 		 */
 		WARN_ON_ONCE(task->flags & PF_EXITING);
 
-		rcu_assign_pointer(task->cgroups, to_cset);
+		cgroup_move_task(task, to_cset);
 		list_add_tail(&task->cg_list, use_mg_tasks ? &to_cset->mg_tasks :
 							     &to_cset->tasks);
 	}
@@ -1359,8 +1360,15 @@ static char *cgroup_file_name(struct cgroup *cgrp, const struct cftype *cft,
 {
 	struct cgroup_subsys *ss = cft->ss;
 
+#ifdef CONFIG_CPUSETS
+	if (cft->ss && !(cft->flags & CFTYPE_NO_PREFIX) &&
+	    !(cgrp->root->flags & CGRP_ROOT_NOPREFIX) &&
+	    !(cft->ss->id == cpuset_cgrp_id &&
+		(cgrp->root->flags & CGRP_ROOT_CPUSET_NOPREFIX)))
+#else
 	if (cft->ss && !(cft->flags & CFTYPE_NO_PREFIX) &&
 	    !(cgrp->root->flags & CGRP_ROOT_NOPREFIX))
+#endif
 		snprintf(buf, CGROUP_FILE_NAME_MAX, "%s.%s",
 			 cgroup_on_dfl(cgrp) ? ss->name : ss->legacy_name,
 			 cft->name);
@@ -1692,7 +1700,7 @@ static int parse_cgroup_root_flags(char *data, unsigned int *root_flags)
 
 	*root_flags = 0;
 
-	if (!data || *data == '\0')
+	if (!data)
 		return 0;
 
 	while ((token = strsep(&data, ",")) != NULL) {
@@ -1942,7 +1950,7 @@ struct dentry *cgroup_do_mount(struct file_system_type *fs_type, int flags,
 			       struct cgroup_namespace *ns)
 {
 	struct dentry *dentry;
-	bool new_sb = false;
+	bool new_sb;
 
 	dentry = kernfs_mount(fs_type, flags, root->kf_root, magic, &new_sb);
 
@@ -1952,7 +1960,6 @@ struct dentry *cgroup_do_mount(struct file_system_type *fs_type, int flags,
 	 */
 	if (!IS_ERR(dentry) && ns != &init_cgroup_ns) {
 		struct dentry *nsdentry;
-		struct super_block *sb = dentry->d_sb;
 		struct cgroup *cgrp;
 
 		mutex_lock(&cgroup_mutex);
@@ -1963,14 +1970,12 @@ struct dentry *cgroup_do_mount(struct file_system_type *fs_type, int flags,
 		spin_unlock_irq(&css_set_lock);
 		mutex_unlock(&cgroup_mutex);
 
-		nsdentry = kernfs_node_dentry(cgrp->kn, sb);
+		nsdentry = kernfs_node_dentry(cgrp->kn, dentry->d_sb);
 		dput(dentry);
-		if (IS_ERR(nsdentry))
-			deactivate_locked_super(sb);
 		dentry = nsdentry;
 	}
 
-	if (!new_sb)
+	if (IS_ERR(dentry) || !new_sb)
 		cgroup_put(&root->cgrp);
 
 	return dentry;
@@ -2783,12 +2788,11 @@ restart:
 }
 
 /**
- * cgroup_save_control - save control masks and dom_cgrp of a subtree
+ * cgroup_save_control - save control masks of a subtree
  * @cgrp: root of the target subtree
  *
- * Save ->subtree_control, ->subtree_ss_mask and ->dom_cgrp to the
- * respective old_ prefixed fields for @cgrp's subtree including @cgrp
- * itself.
+ * Save ->subtree_control and ->subtree_ss_mask to the respective old_
+ * prefixed fields for @cgrp's subtree including @cgrp itself.
  */
 static void cgroup_save_control(struct cgroup *cgrp)
 {
@@ -2798,7 +2802,6 @@ static void cgroup_save_control(struct cgroup *cgrp)
 	cgroup_for_each_live_descendant_pre(dsct, d_css, cgrp) {
 		dsct->old_subtree_control = dsct->subtree_control;
 		dsct->old_subtree_ss_mask = dsct->subtree_ss_mask;
-		dsct->old_dom_cgrp = dsct->dom_cgrp;
 	}
 }
 
@@ -2824,12 +2827,11 @@ static void cgroup_propagate_control(struct cgroup *cgrp)
 }
 
 /**
- * cgroup_restore_control - restore control masks and dom_cgrp of a subtree
+ * cgroup_restore_control - restore control masks of a subtree
  * @cgrp: root of the target subtree
  *
- * Restore ->subtree_control, ->subtree_ss_mask and ->dom_cgrp from the
- * respective old_ prefixed fields for @cgrp's subtree including @cgrp
- * itself.
+ * Restore ->subtree_control and ->subtree_ss_mask from the respective old_
+ * prefixed fields for @cgrp's subtree including @cgrp itself.
  */
 static void cgroup_restore_control(struct cgroup *cgrp)
 {
@@ -2839,7 +2841,6 @@ static void cgroup_restore_control(struct cgroup *cgrp)
 	cgroup_for_each_live_descendant_post(dsct, d_css, cgrp) {
 		dsct->subtree_control = dsct->old_subtree_control;
 		dsct->subtree_ss_mask = dsct->old_subtree_ss_mask;
-		dsct->dom_cgrp = dsct->old_dom_cgrp;
 	}
 }
 
@@ -3147,8 +3148,6 @@ static int cgroup_enable_threaded(struct cgroup *cgrp)
 {
 	struct cgroup *parent = cgroup_parent(cgrp);
 	struct cgroup *dom_cgrp = parent->dom_cgrp;
-	struct cgroup *dsct;
-	struct cgroup_subsys_state *d_css;
 	int ret;
 
 	lockdep_assert_held(&cgroup_mutex);
@@ -3178,13 +3177,12 @@ static int cgroup_enable_threaded(struct cgroup *cgrp)
 	 */
 	cgroup_save_control(cgrp);
 
-	cgroup_for_each_live_descendant_pre(dsct, d_css, cgrp)
-		if (dsct == cgrp || cgroup_is_threaded(dsct))
-			dsct->dom_cgrp = dom_cgrp;
-
+	cgrp->dom_cgrp = dom_cgrp;
 	ret = cgroup_apply_control(cgrp);
 	if (!ret)
 		parent->nr_threaded_children++;
+	else
+		cgrp->dom_cgrp = cgrp;
 
 	cgroup_finalize_control(cgrp, ret);
 	return ret;
@@ -3331,6 +3329,79 @@ static int cgroup_stat_show(struct seq_file *seq, void *v)
 
 	return 0;
 }
+
+#ifdef CONFIG_PSI
+static int cgroup_io_pressure_show(struct seq_file *seq, void *v)
+{
+	return psi_show(seq, &seq_css(seq)->cgroup->psi, PSI_IO);
+}
+static int cgroup_memory_pressure_show(struct seq_file *seq, void *v)
+{
+	return psi_show(seq, &seq_css(seq)->cgroup->psi, PSI_MEM);
+}
+static int cgroup_cpu_pressure_show(struct seq_file *seq, void *v)
+{
+	return psi_show(seq, &seq_css(seq)->cgroup->psi, PSI_CPU);
+}
+
+static ssize_t cgroup_pressure_write(struct kernfs_open_file *of, char *buf,
+					  size_t nbytes, enum psi_res res)
+{
+	struct psi_trigger *new;
+	struct cgroup *cgrp;
+
+	cgrp = cgroup_kn_lock_live(of->kn, false);
+	if (!cgrp)
+		return -ENODEV;
+
+	cgroup_get(cgrp);
+	cgroup_kn_unlock(of->kn);
+
+	new = psi_trigger_create(&cgrp->psi, buf, nbytes, res);
+	if (IS_ERR(new)) {
+		cgroup_put(cgrp);
+		return PTR_ERR(new);
+	}
+
+	psi_trigger_replace(&of->priv, new);
+
+	cgroup_put(cgrp);
+
+	return nbytes;
+}
+
+static ssize_t cgroup_io_pressure_write(struct kernfs_open_file *of,
+					  char *buf, size_t nbytes,
+					  loff_t off)
+{
+	return cgroup_pressure_write(of, buf, nbytes, PSI_IO);
+}
+
+static ssize_t cgroup_memory_pressure_write(struct kernfs_open_file *of,
+					  char *buf, size_t nbytes,
+					  loff_t off)
+{
+	return cgroup_pressure_write(of, buf, nbytes, PSI_MEM);
+}
+
+static ssize_t cgroup_cpu_pressure_write(struct kernfs_open_file *of,
+					  char *buf, size_t nbytes,
+					  loff_t off)
+{
+	return cgroup_pressure_write(of, buf, nbytes, PSI_CPU);
+}
+
+static unsigned int cgroup_pressure_poll(struct kernfs_open_file *of,
+					 poll_table *pt)
+{
+	return psi_trigger_poll(&of->priv, of->file, pt);
+}
+
+static void cgroup_pressure_release(struct kernfs_open_file *of)
+{
+	psi_trigger_replace(&of->priv, NULL);
+}
+#endif /* CONFIG_PSI */
 
 static int cgroup_file_open(struct kernfs_open_file *of)
 {
@@ -4083,25 +4154,20 @@ static void css_task_iter_advance(struct css_task_iter *it)
 
 	lockdep_assert_held(&css_set_lock);
 repeat:
-	if (it->task_pos) {
-		/*
-		 * Advance iterator to find next entry.  cset->tasks is
-		 * consumed first and then ->mg_tasks.  After ->mg_tasks,
-		 * we move onto the next cset.
-		 */
-		next = it->task_pos->next;
+	/*
+	 * Advance iterator to find next entry.  cset->tasks is consumed
+	 * first and then ->mg_tasks.  After ->mg_tasks, we move onto the
+	 * next cset.
+	 */
+	next = it->task_pos->next;
 
-		if (next == it->tasks_head)
-			next = it->mg_tasks_head->next;
+	if (next == it->tasks_head)
+		next = it->mg_tasks_head->next;
 
-		if (next == it->mg_tasks_head)
-			css_task_iter_advance_css_set(it);
-		else
-			it->task_pos = next;
-	} else {
-		/* called from start, proceed to the first cset */
+	if (next == it->mg_tasks_head)
 		css_task_iter_advance_css_set(it);
-	}
+	else
+		it->task_pos = next;
 
 	/* if PROCS, skip over tasks which aren't group leaders */
 	if ((it->flags & CSS_TASK_ITER_PROCS) && it->task_pos &&
@@ -4141,7 +4207,7 @@ void css_task_iter_start(struct cgroup_subsys_state *css, unsigned int flags,
 
 	it->cset_head = it->cset_pos;
 
-	css_task_iter_advance(it);
+	css_task_iter_advance_css_set(it);
 
 	spin_unlock_irq(&css_set_lock);
 }
@@ -4442,6 +4508,32 @@ static struct cftype cgroup_base_files[] = {
 		.name = "cgroup.stat",
 		.seq_show = cgroup_stat_show,
 	},
+#ifdef CONFIG_PSI
+	{
+		.name = "io.pressure",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.seq_show = cgroup_io_pressure_show,
+		.write = cgroup_io_pressure_write,
+		.poll = cgroup_pressure_poll,
+		.release = cgroup_pressure_release,
+	},
+	{
+		.name = "memory.pressure",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.seq_show = cgroup_memory_pressure_show,
+		.write = cgroup_memory_pressure_write,
+		.poll = cgroup_pressure_poll,
+		.release = cgroup_pressure_release,
+	},
+	{
+		.name = "cpu.pressure",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.seq_show = cgroup_cpu_pressure_show,
+		.write = cgroup_cpu_pressure_write,
+		.poll = cgroup_pressure_poll,
+		.release = cgroup_pressure_release,
+	},
+#endif /* CONFIG_PSI */
 	{ }	/* terminate */
 };
 
@@ -4502,6 +4594,8 @@ static void css_free_work_fn(struct work_struct *work)
 			 */
 			cgroup_put(cgroup_parent(cgrp));
 			kernfs_put(cgrp->kn);
+			if (cgroup_on_dfl(cgrp))
+				psi_cgroup_free(cgrp);
 			kfree(cgrp);
 		} else {
 			/*
@@ -4546,9 +4640,11 @@ static void css_release_work_fn(struct work_struct *work)
 		/* cgroup release path */
 		trace_cgroup_release(cgrp);
 
+		spin_lock_irq(&css_set_lock);
 		for (tcgrp = cgroup_parent(cgrp); tcgrp;
 		     tcgrp = cgroup_parent(tcgrp))
 			tcgrp->nr_dying_descendants--;
+		spin_unlock_irq(&css_set_lock);
 
 		cgroup_idr_remove(&cgrp->root->cgroup_idr, cgrp->id);
 		cgrp->id = -1;
@@ -4745,12 +4841,14 @@ static struct cgroup *cgroup_create(struct cgroup *parent)
 	cgrp->root = root;
 	cgrp->level = level;
 
+	spin_lock_irq(&css_set_lock);
 	for (tcgrp = cgrp; tcgrp; tcgrp = cgroup_parent(tcgrp)) {
 		cgrp->ancestor_ids[tcgrp->level] = tcgrp->id;
 
 		if (tcgrp != cgrp)
 			tcgrp->nr_descendants++;
 	}
+	spin_unlock_irq(&css_set_lock);
 
 	if (notify_on_release(parent))
 		set_bit(CGRP_NOTIFY_ON_RELEASE, &cgrp->flags);
@@ -4778,6 +4876,12 @@ static struct cgroup *cgroup_create(struct cgroup *parent)
 	if (!cgroup_on_dfl(cgrp))
 		cgrp->subtree_control = cgroup_control(cgrp);
 
+	if (cgroup_on_dfl(cgrp)) {
+		ret = psi_cgroup_alloc(cgrp);
+		if (ret)
+			goto out_idr_free;
+	}
+
 	if (parent)
 		cgroup_bpf_inherit(cgrp, parent);
 
@@ -4785,6 +4889,8 @@ static struct cgroup *cgroup_create(struct cgroup *parent)
 
 	return cgrp;
 
+out_idr_free:
+	cgroup_idr_remove(&root->cgroup_idr, cgrp->id);
 out_cancel_ref:
 	percpu_ref_exit(&cgrp->self.refcnt);
 out_free_cgrp:
@@ -5033,10 +5139,12 @@ static int cgroup_destroy_locked(struct cgroup *cgrp)
 	if (parent && cgroup_is_threaded(cgrp))
 		parent->nr_threaded_children--;
 
+	spin_lock_irq(&css_set_lock);
 	for (tcgrp = cgroup_parent(cgrp); tcgrp; tcgrp = cgroup_parent(tcgrp)) {
 		tcgrp->nr_descendants--;
 		tcgrp->nr_dying_descendants++;
 	}
+	spin_unlock_irq(&css_set_lock);
 
 	cgroup1_check_for_release(parent);
 
@@ -5112,7 +5220,7 @@ static void __init cgroup_init_subsys(struct cgroup_subsys *ss, bool early)
 
 	have_fork_callback |= (bool)ss->fork << ss->id;
 	have_exit_callback |= (bool)ss->exit << ss->id;
-	have_release_callback |= (bool)ss->release << ss->id;
+	have_free_callback |= (bool)ss->free << ss->id;
 	have_canfork_callback |= (bool)ss->can_fork << ss->id;
 
 	/* At system boot, before all subsystems have been
@@ -5546,19 +5654,16 @@ void cgroup_exit(struct task_struct *tsk)
 	} while_each_subsys_mask();
 }
 
-void cgroup_release(struct task_struct *task)
-{
-	struct cgroup_subsys *ss;
-	int ssid;
-
-	do_each_subsys_mask(ss, ssid, have_release_callback) {
-		ss->release(task);
-	} while_each_subsys_mask();
-}
-
 void cgroup_free(struct task_struct *task)
 {
 	struct css_set *cset = task_css_set(task);
+	struct cgroup_subsys *ss;
+	int ssid;
+
+	do_each_subsys_mask(ss, ssid, have_free_callback) {
+		ss->free(task);
+	} while_each_subsys_mask();
+
 	put_css_set(cset);
 }
 

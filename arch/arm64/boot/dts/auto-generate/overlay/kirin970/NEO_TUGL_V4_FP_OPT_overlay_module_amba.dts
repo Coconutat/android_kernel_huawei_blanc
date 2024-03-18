@@ -1,0 +1,10 @@
+&amba {
+	i2c@FFD72000 {
+		superswitch_fusb3601_i2c1@25 {
+			dpd_enable = <1>;
+			compatible = "fairchild,fusb3601";
+			status = "ok";
+		};
+	};
+};
+/* end amba */

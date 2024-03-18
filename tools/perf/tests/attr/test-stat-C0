@@ -7,4 +7,3 @@ ret     = 1
 # events are disabled by default when attached to cpu
 disabled=1
 enable_on_exec=0
-optional=1

@@ -1,0 +1,32 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "COL_TL00_VA_config.dtsi"
+/include/ "COL_TL00_VB_pin.dtsi"
+/include/ "COL_TL00_VB_sec_pin.dtsi"
+/include/ "COL_TL00_VB_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 8 1 3>;
+	hisi,boardname = "COL_TL00_VB";
+	hisi,modem_id = <0x39613000>;
+
+	amba: amba {
+		i2c3: i2c@FDF0C000 {
+			pn547_nfc: nfc@28 {
+				nfc_brcm_conf_name = "libnfc-brcm.conf";
+				nfc_nxp_name = "libnfc-nxp.conf";
+				nfc_card_num = <0x2>;
+				nfc_chip_type = "pn551";
+			};
+		};
+	};
+};

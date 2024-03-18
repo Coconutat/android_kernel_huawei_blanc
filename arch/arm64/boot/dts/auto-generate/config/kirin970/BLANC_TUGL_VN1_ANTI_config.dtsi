@@ -1,0 +1,21 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "BLANC_TUGL_VN1_WIFI_PMIC_RF_config.dtsi"
+/include/ "huawei_cc_anti_corrosion.dtsi"
+/ {
+	hisi,boardid = <6 4 5 9>;
+	hisi,boardname = "BLANC_TUGL_VN1_ANTI";
+	hisi,product_id = <0x39011C00>;
+	hisi,modem_id = <0x39011C00>;
+	cc_anti_corrosion: cc_anti_corrosion {
+		compatible = "huawei,cc-anti-corrosion";
+		status = "disabled";
+	};
+};

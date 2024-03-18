@@ -734,7 +734,6 @@ static blk_status_t __scsi_error_from_host_byte(struct scsi_cmnd *cmd,
 		set_host_byte(cmd, DID_OK);
 		return BLK_STS_TARGET;
 	case DID_NEXUS_FAILURE:
-		set_host_byte(cmd, DID_OK);
 		return BLK_STS_NEXUS;
 	case DID_ALLOC_FAILURE:
 		set_host_byte(cmd, DID_OK);
@@ -1648,7 +1647,12 @@ static void scsi_softirq_done(struct request *rq)
 	struct scsi_cmnd *cmd = blk_mq_rq_to_pdu(rq);
 	unsigned long wait_for = (cmd->allowed + 1) * rq->timeout;
 	int disposition;
+#ifdef CONFIG_HISI_BLK
+	struct Scsi_Host *shost = cmd->device->host;
 
+	if (shost->queue_quirk_flag | SHOST_QUIRK(SHOST_QUIRK_UNMAP_IN_SOFTIRQ))
+		scsi_dma_unmap(cmd);
+#endif
 	INIT_LIST_HEAD(&cmd->eh_entry);
 
 	atomic_inc(&cmd->device->iodone_cnt);
@@ -1927,8 +1931,12 @@ static inline blk_status_t prep_to_mq(int ret)
 /* Size in bytes of the sg-list stored in the scsi-mq command-private data. */
 static unsigned int scsi_mq_sgl_size(struct Scsi_Host *shost)
 {
+#ifdef CONFIG_SCSI_UFS_CUST_MAX_SECTORS
+	return shost->sg_tablesize * sizeof(struct scatterlist);
+#else
 	return min_t(unsigned int, shost->sg_tablesize, SG_CHUNK_SIZE) *
 		sizeof(struct scatterlist);
+#endif
 }
 
 static int scsi_mq_prep_fn(struct request *req)
@@ -2023,7 +2031,7 @@ static blk_status_t scsi_queue_rq(struct blk_mq_hw_ctx *hctx,
 	cmd->scsi_done = scsi_mq_done;
 
 	reason = scsi_dispatch_cmd(cmd);
-	if (reason) {
+	if (unlikely(reason)) {
 		scsi_set_blocked(cmd, reason);
 		ret = BLK_STS_RESOURCE;
 		goto out_dec_host_busy;
@@ -2045,6 +2053,10 @@ out:
 	case BLK_STS_OK:
 		break;
 	case BLK_STS_RESOURCE:
+#ifdef CONFIG_HISI_BLK
+		if (shost->queue_quirk_flag | SHOST_QUIRK(SHOST_QUIRK_HISI_UFS_MQ))
+			break;
+#endif
 		if (atomic_read(&sdev->device_busy) == 0 &&
 		    !scsi_device_blocked(sdev))
 			blk_mq_delay_run_hw_queue(hctx, SCSI_QUEUE_DELAY);
@@ -2176,6 +2188,16 @@ void __scsi_init_queue(struct Scsi_Host *shost, struct request_queue *q)
 	 * Devices that require a bigger alignment can increase it later.
 	 */
 	blk_queue_dma_alignment(q, max(4, dma_get_cache_alignment()) - 1);
+#ifdef CONFIG_HISI_BLK
+#ifdef CONFIG_SCSI_UFS_INLINE_CRYPTO
+	/*
+	* We set the inline crypto flag here because ufs driver update the host
+	* flag until the ufs probe complete.
+	*/
+	blk_queue_set_inline_crypto_flag(q, shost->crypto_enabled);
+#endif
+#endif
+	/* CONFIG_HISI_BLK */
 }
 EXPORT_SYMBOL_GPL(__scsi_init_queue);
 
@@ -2273,6 +2295,48 @@ struct request_queue *scsi_mq_alloc_queue(struct scsi_device *sdev)
 	return sdev->request_queue;
 }
 
+#ifdef CONFIG_HISI_BLK
+static void scsi_dump_status(
+	struct request_queue *q, enum blk_dump_scenario dump_type)
+{
+	struct scsi_device *sdev = q->queuedata;
+	struct Scsi_Host *shost = sdev->host;
+	if (sdev->host->hostt->dump_status)
+		sdev->host->hostt->dump_status(shost, dump_type);
+}
+
+static int scsi_direct_flush(struct request_queue *q)
+{
+	struct scsi_device *sdev = q->queuedata;
+	if (sdev->type != TYPE_DISK || sdev->host->hostt->direct_flush == NULL)
+		return -1;
+	if (sdev->host->host_self_blocked || sdev->sdev_state != SDEV_RUNNING)
+		return -1;
+	return sdev->host->hostt->direct_flush(sdev);
+}
+#endif /* CONFIG_HISI_BLK */
+
+static int scsi_tz_query(struct request_queue *q, u8 *buf, u32 buf_len)
+{
+	struct scsi_device *sdev = q->queuedata;
+
+	if (sdev->type != TYPE_DISK || !sdev->host->hostt->get_tz_info)
+		return -EINVAL;
+	if (sdev->host->host_self_blocked || sdev->sdev_state != SDEV_RUNNING)
+		return -EINVAL;
+	return sdev->host->hostt->get_tz_info(sdev, buf, buf_len);
+}
+
+static int scsi_tz_ctrl(struct request_queue *q, int desc_id, uint8_t index)
+{
+	struct scsi_device *sdev = q->queuedata;
+	if (sdev->type != TYPE_DISK || !sdev->host->hostt->tz_ctrl)
+		return -EINVAL;
+	if (sdev->host->host_self_blocked || sdev->sdev_state != SDEV_RUNNING)
+		return -EINVAL;
+	return sdev->host->hostt->tz_ctrl(sdev, desc_id, index);
+}
+
 int scsi_mq_setup_tags(struct Scsi_Host *shost)
 {
 	unsigned int cmd_size, sgl_size;
@@ -2292,6 +2356,39 @@ int scsi_mq_setup_tags(struct Scsi_Host *shost)
 	shost->tag_set.flags |=
 		BLK_ALLOC_POLICY_TO_MQ_FLAG(shost->hostt->tag_alloc_policy);
 	shost->tag_set.driver_data = shost;
+#ifdef CONFIG_HISI_BLK
+	shost->tag_set.flags |= BLK_MQ_F_NO_SCHED;
+	shost->tag_set.queue_depth = shost->mq_queue_depth
+					     ? shost->mq_queue_depth
+					     : shost->can_queue;
+	shost->tag_set.reserved_tags = shost->mq_reserved_queue_depth;
+	shost->tag_set.high_prio_tags = shost->mq_high_prio_queue_depth;
+
+	blk_mq_tagset_dump_register(&shost->tag_set,
+		shost->hostt->dump_status ? scsi_dump_status
+					  : (lld_dump_status_fn)NULL);
+	if (shost->queue_quirk_flag &
+		SHOST_QUIRK(SHOST_QUIRK_IO_LATENCY_WARNING))
+		blk_mq_tagset_latency_warning_set(&shost->tag_set, 1000);
+	blk_mq_tagset_busy_idle_enable(&shost->tag_set,
+		(shost->queue_quirk_flag &
+			SHOST_QUIRK(SHOST_QUIRK_BUSY_IDLE_ENABLE)));
+	blk_mq_tagset_hw_idle_notify_enable(&shost->tag_set,
+		(shost->queue_quirk_flag &
+			SHOST_QUIRK(SHOST_QUIRK_BUSY_IDLE_INTR_ENABLE)));
+	blk_mq_tagset_direct_flush_register(&shost->tag_set,
+		shost->hostt->direct_flush ? scsi_direct_flush
+					   : (blk_direct_flush_fn)NULL);
+	blk_mq_tagset_tz_query_register(&shost->tag_set,
+		shost->hostt->get_tz_info ? scsi_tz_query : NULL);
+	blk_mq_tagset_tz_ctrl_register(
+		&shost->tag_set, shost->hostt->tz_ctrl ? scsi_tz_ctrl : NULL);
+	blk_mq_tagset_flush_reduce_config(&shost->tag_set,
+		!!(shost->queue_quirk_flag &
+			SHOST_QUIRK(SHOST_QUIRK_FLUSH_REDUCING)));
+	blk_mq_tagset_ufs_mq_iosched_enable(&shost->tag_set,
+		shost->queue_quirk_flag & SHOST_QUIRK(SHOST_QUIRK_HISI_UFS_MQ));
+#endif /* CONFIG_HISI_BLK */
 
 	return blk_mq_alloc_tag_set(&shost->tag_set);
 }

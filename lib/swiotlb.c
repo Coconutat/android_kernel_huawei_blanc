@@ -768,7 +768,7 @@ swiotlb_alloc_coherent(struct device *hwdev, size_t size,
 
 err_warn:
 	if (warn && printk_ratelimit()) {
-		pr_warn("coherent allocation failed for device %s size=%zu\n",
+		pr_warn("swiotlb: coherent allocation failed for device %s size=%zu\n",
 			dev_name(hwdev), size);
 		dump_stack();
 	}
@@ -938,7 +938,9 @@ swiotlb_sync_single(struct device *hwdev, dma_addr_t dev_addr,
 	if (dir != DMA_FROM_DEVICE)
 		return;
 
+#ifndef CONFIG_HISI_LB
 	dma_mark_clean(phys_to_virt(paddr), size);
+#endif
 }
 
 void

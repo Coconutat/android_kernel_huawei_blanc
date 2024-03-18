@@ -1,0 +1,46 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "EMILY_TUGL_V3_overlay.dtsi"
+/include/ "EMILY_TUGL_V4_overlay_module_amba.dts"
+
+/ {
+        board_id = <6509>;
+};
+
+&rootparam {
+    hisi,boardid = <6 5 0 9>;
+    hisi,boardname = "EMILY_TUGL_V4";
+};
+
+        &huawei_lcd_panel {
+                product_id = <4003>;
+        };
+
+&cc_anti_corrosion {
+	cc_corrosion_gpio = <&gpio26 1 0>;
+	pinctrl-0 = <&gpio209_pmx_func &gpio209_cfg_func>;
+	pinctrl-1 = <&gpio209_pmx_idle &gpio209_cfg_idle>;
+	gpio_mode = <1>;
+	status = "disabled";
+};
+
+&sensorhub {
+	gsensor {
+		acc1 {
+			used_int_pin =<1>;
+		};
+		acc2 {
+			used_int_pin =<1>;
+		};
+	};
+};
+&direct_charger {
+	min_dc_bat_vol = <3550>;
+};

@@ -1,0 +1,31 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "VCE_AL00_VA_overlay.dtsi"
+
+/ {
+	board_id = <6972>;
+};
+&rootparam {
+    hisi,boardid = <6 9 7 2>;
+    hisi,boardname = "VCE_AL00_VB";
+};
+
+&sensorhub{
+		proximity{
+				ps1{
+					file_id=<108>;
+				};
+		};
+	};
+
+&huawei_imx586 {
+	compatible = "huawei,imx586_v4";
+	avdd-supply = <&ldo34>;
+};

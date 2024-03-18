@@ -87,9 +87,13 @@
 #include <linux/aio.h>
 #include <linux/compiler.h>
 #include <linux/sysctl.h>
+#include <linux/hisi/hisi_hkip.h>
 #include <linux/kcov.h>
 #include <linux/livepatch.h>
 #include <linux/thread_info.h>
+#include <linux/cpufreq_times.h>
+
+#include <linux/blk-cgroup.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -103,6 +107,19 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>
 
+#ifdef CONFIG_HW_VIP_THREAD
+#include <cpu_netlink/cpu_netlink.h>
+#endif
+#ifdef CONFIG_HW_CGROUP_PIDS
+#include <./cgroup_huawei/cgroup_pids.h>
+#endif
+#ifdef CONFIG_HWAA
+#include <huawei_platform/hwaa/hwaa_proc_hooks.h>
+#endif
+#ifdef CONFIG_HW_QOS_THREAD
+#include <chipset_common/hwqos/hwqos_common.h>
+#include <chipset_common/hwqos/hwqos_fork.h>
+#endif
 /*
  * Minimum number of threads to boot the kernel
  */
@@ -366,6 +383,8 @@ void put_task_stack(struct task_struct *tsk)
 
 void free_task(struct task_struct *tsk)
 {
+	cpufreq_task_times_exit(tsk);
+
 #ifndef CONFIG_THREAD_INFO_IN_TASK
 	/*
 	 * The task is finally done with both the stack and thread_info,
@@ -414,6 +433,9 @@ void __put_task_struct(struct task_struct *tsk)
 	WARN_ON(atomic_read(&tsk->usage));
 	WARN_ON(tsk == current);
 
+#ifdef CONFIG_HW_QOS_THREAD
+	release_task_qos_info(tsk);
+#endif
 	cgroup_free(tsk);
 	task_numa_free(tsk);
 	security_task_free(tsk);
@@ -598,6 +620,9 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 					struct mm_struct *oldmm)
 {
 	struct vm_area_struct *mpnt, *tmp, *prev, **pprev;
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	struct vm_area_struct *last = NULL;
+#endif
 	struct rb_node **rb_link, *rb_parent;
 	int retval;
 	unsigned long charge;
@@ -653,7 +678,11 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 		if (!tmp)
 			goto fail_nomem;
 		*tmp = *mpnt;
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+		INIT_VMA(tmp);
+#else
 		INIT_LIST_HEAD(&tmp->anon_vma_chain);
+#endif
 		retval = vma_dup_policy(mpnt, tmp);
 		if (retval)
 			goto fail_nomem_policy;
@@ -710,8 +739,18 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 		rb_parent = &tmp->vm_rb;
 
 		mm->map_count++;
-		if (!(tmp->vm_flags & VM_WIPEONFORK))
+		if (!(tmp->vm_flags & VM_WIPEONFORK)) {
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+			/*
+			 * Mark this VMA as changing to prevent the
+			 * speculative page fault hanlder to process
+			 * it until the TLB are flushed below.
+			 */
+			last = mpnt;
+			vm_write_begin(mpnt);
+#endif
 			retval = copy_page_range(mm, oldmm, mpnt);
+		}
 
 		if (tmp->vm_ops && tmp->vm_ops->open)
 			tmp->vm_ops->open(tmp);
@@ -724,6 +763,20 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 out:
 	up_write(&mm->mmap_sem);
 	flush_tlb_mm(oldmm);
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	/*
+	 * Since the TLB has been flush, we can safely unmark the
+	 * copied VMAs and allows the speculative page fault handler to
+	 * process them again.
+	 * Walk back the VMA list from the last marked VMA.
+	 */
+	for (; last; last = last->vm_prev) {
+		if (last->vm_flags & VM_DONTCOPY)
+			continue;
+		if (!(last->vm_flags & VM_WIPEONFORK))
+			vm_write_end(last);
+	}
+#endif
 	up_write(&oldmm->mmap_sem);
 	dup_userfaultfd_complete(&uf);
 fail_uprobe_end:
@@ -810,6 +863,9 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
 	mm->mmap = NULL;
 	mm->mm_rb = RB_ROOT;
 	mm->vmacache_seqnum = 0;
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	rwlock_init(&mm->mm_rb_lock);
+#endif
 	atomic_set(&mm->mm_users, 1);
 	atomic_set(&mm->mm_count, 1);
 	init_rwsem(&mm->mmap_sem);
@@ -833,6 +889,9 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
 	mm->pmd_huge_pte = NULL;
 #endif
 	mm_init_uprobes_state(mm);
+#ifdef CONFIG_TASK_PROTECT_LRU
+	mm->protect = 0;
+#endif
 
 	if (current->mm) {
 		mm->flags = current->mm->flags & MMF_INIT_MASK;
@@ -845,13 +904,25 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
 	if (mm_alloc_pgd(mm))
 		goto fail_nopgd;
 
-	if (init_new_context(p, mm))
+#ifdef CONFIG_BLK_DEV_THROTTLING
+	mm->io_limit = kmalloc(sizeof(struct blk_throtl_io_limit), GFP_KERNEL);
+	if (!mm->io_limit)
 		goto fail_nocontext;
+
+	blk_throtl_io_limit_init(mm->io_limit);
+#endif
+
+	if (init_new_context(p, mm))
+		goto fail_io_limit;
 
 	mm->user_ns = get_user_ns(user_ns);
 	return mm;
 
+fail_io_limit:
+#ifdef CONFIG_BLK_DEV_THROTTLING
+	kfree(mm->io_limit);
 fail_nocontext:
+#endif
 	mm_free_pgd(mm);
 fail_nopgd:
 	free_mm(mm);
@@ -867,7 +938,7 @@ static void check_mm(struct mm_struct *mm)
 
 		if (unlikely(x))
 			printk(KERN_ALERT "BUG: Bad rss-counter state "
-					  "mm:%p idx:%d val:%ld\n", mm, i, x);
+					  "mm:%pK idx:%d val:%ld\n", mm, i, x);
 	}
 
 	if (atomic_long_read(&mm->nr_ptes))
@@ -911,6 +982,9 @@ void __mmdrop(struct mm_struct *mm)
 	mmu_notifier_mm_destroy(mm);
 	check_mm(mm);
 	put_user_ns(mm->user_ns);
+#ifdef CONFIG_BLK_DEV_THROTTLING
+	blk_throtl_io_limit_put(mm->io_limit);
+#endif
 	free_mm(mm);
 }
 EXPORT_SYMBOL_GPL(__mmdrop);
@@ -1432,6 +1506,9 @@ static int copy_signal(unsigned long clone_flags, struct task_struct *tsk)
 	tty_audit_fork(sig);
 	sched_autogroup_fork(sig);
 
+#ifdef CONFIG_HW_DIE_CATCH
+	sig->unexpected_die_catch_flags = 0; /*all new child don't inherit it*/
+#endif
 	sig->oom_score_adj = current->signal->oom_score_adj;
 	sig->oom_score_adj_min = current->signal->oom_score_adj_min;
 
@@ -1512,6 +1589,10 @@ init_task_pid(struct task_struct *task, enum pid_type type, struct pid *pid)
 {
 	 task->pids[type].pid = pid;
 }
+
+#ifdef CONFIG_HW_VIP_THREAD
+#include <chipset_common/hwcfs/hwcfs_fork.h>
+#endif
 
 static inline void rcu_copy_process(struct task_struct *p)
 {
@@ -1596,6 +1677,12 @@ static __latent_entropy struct task_struct *copy_process(
 	if (!p)
 		goto fork_out;
 
+	retval = hkip_check_xid_root();
+	if (retval)
+		goto bad_fork_free;
+
+	cpufreq_task_times_init(p);
+
 	/*
 	 * This _must_ happen before we call free_task(), i.e. before we jump
 	 * to any of the bad_fork_* labels. This is to avoid freeing
@@ -1624,11 +1711,19 @@ static __latent_entropy struct task_struct *copy_process(
 			goto bad_fork_free;
 	}
 	current->flags &= ~PF_NPROC_EXCEEDED;
-
-	retval = copy_creds(p, clone_flags);
+#ifdef CONFIG_HW_CGROUP_PIDS
+	retval = cgroup_pids_can_fork();
 	if (retval < 0)
 		goto bad_fork_free;
 
+	retval = copy_creds(p, clone_flags);
+	if (retval < 0)
+		goto bad_fork_cleanup_cgroup_pids;
+#else
+	retval = copy_creds(p, clone_flags);
+	if (retval < 0)
+		goto bad_fork_free;
+#endif
 	/*
 	 * If multiple threads are within copy_process(), then this check
 	 * triggers too late. This doesn't hurt, the check is only there
@@ -1655,6 +1750,9 @@ static __latent_entropy struct task_struct *copy_process(
 #endif
 	prev_cputime_init(&p->prev_cputime);
 
+#ifdef CONFIG_CPU_FREQ_POWER_STAT
+	p->cpu_power = 0;
+#endif
 #ifdef CONFIG_VIRT_CPU_ACCOUNTING_GEN
 	seqcount_init(&p->vtime.seqcount);
 	p->vtime.starttime = 0;
@@ -1666,6 +1764,10 @@ static __latent_entropy struct task_struct *copy_process(
 #endif
 
 	p->default_timer_slack_ns = current->timer_slack_ns;
+
+#ifdef CONFIG_PSI
+	p->psi_flags = 0;
+#endif
 
 	task_io_accounting_init(&p->ioac);
 	acct_clear_integrals(p);
@@ -1719,6 +1821,16 @@ static __latent_entropy struct task_struct *copy_process(
 #ifdef CONFIG_BCACHE
 	p->sequential_io	= 0;
 	p->sequential_io_avg	= 0;
+#endif
+#ifdef CONFIG_HISI_SWAP_ZDATA
+	p->proc_reclaimed_result = NULL;
+#endif
+
+#ifdef CONFIG_HW_VIP_THREAD
+	init_task_vip_info(p);
+#endif
+#ifdef CONFIG_HW_RTG_SCHED
+	p->rtg_depth = 0;
 #endif
 
 	/* Perform scheduler related setup. Assign this task to a CPU. */
@@ -1814,6 +1926,9 @@ static __latent_entropy struct task_struct *copy_process(
 			p->exit_signal = (clone_flags & CSIGNAL);
 		p->group_leader = p;
 		p->tgid = p->pid;
+#ifdef CONFIG_HW_CGROUP_WORKINGSET
+		p->flags &= ~PF_WSCG_MONITOR;
+#endif
 	}
 
 	p->nr_dirtied = 0;
@@ -1824,6 +1939,7 @@ static __latent_entropy struct task_struct *copy_process(
 	INIT_LIST_HEAD(&p->thread_group);
 	p->task_works = NULL;
 
+	hkip_init_task(p);
 	cgroup_threadgroup_change_begin(current);
 	/*
 	 * Ensure that the cgroup subsystem policies allow the new process to be
@@ -1935,6 +2051,12 @@ static __latent_entropy struct task_struct *copy_process(
 	write_unlock_irq(&tasklist_lock);
 
 	proc_fork_connector(p);
+#ifdef CONFIG_HW_QOS_THREAD
+	iaware_proc_fork_inherit(p, clone_flags);
+#endif
+#ifdef CONFIG_HW_VIP_THREAD
+	iaware_proc_fork_connector(p);
+#endif
 	cgroup_post_fork(p);
 	cgroup_threadgroup_change_end(current);
 	perf_event_fork(p);
@@ -1989,6 +2111,10 @@ bad_fork_cleanup_threadgroup_lock:
 bad_fork_cleanup_count:
 	atomic_dec(&p->cred->user->processes);
 	exit_creds(p);
+#ifdef CONFIG_HW_CGROUP_PIDS
+bad_fork_cleanup_cgroup_pids:
+	cgroup_pids_cancel_fork();
+#endif
 bad_fork_free:
 	p->state = TASK_DEAD;
 	put_task_stack(p);
@@ -2066,11 +2192,16 @@ long _do_fork(unsigned long clone_flags,
 		struct completion vfork;
 		struct pid *pid;
 
+		cpufreq_task_times_alloc(p);
+
 		trace_sched_process_fork(current, p);
 
 		pid = get_task_pid(p, PIDTYPE_PID);
 		nr = pid_vnr(pid);
 
+#ifdef CONFIG_HWAA
+		hwaa_proc_on_task_forked(p);
+#endif
 		if (clone_flags & CLONE_PARENT_SETTID)
 			put_user(nr, parent_tidptr);
 

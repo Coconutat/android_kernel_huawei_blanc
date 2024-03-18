@@ -1,0 +1,29 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "VCE_TL00_VB_overlay.dtsi"
+
+/ {
+	board_id = <6976>;
+};
+&rootparam {
+        hisi,dtbo_idx = <67>;
+    hisi,boardid = <6 9 7 6>;
+    hisi,boardname = "VCE_TL00_VC";
+};
+
+&sensorhub{
+		proximity{
+				ps1{
+					file_id=<108>;
+				};
+		};
+	};

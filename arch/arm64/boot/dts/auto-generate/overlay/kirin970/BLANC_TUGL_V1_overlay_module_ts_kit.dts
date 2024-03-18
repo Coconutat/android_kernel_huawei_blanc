@@ -1,0 +1,129 @@
+/*ts kit*/
+&ts_kit {
+	status = "ok";
+	bus_type = "i2c";
+	product = "blanc";
+	bus_id = <7>;
+	has_virtualkey = <0>;
+	fpga_flag = <0>;
+	irq_gpio = <&gpio26 4 0>;
+	reset_gpio = <&gpio1 7 0>;
+	aft_enable = <1>;
+	drv_stop_width = <10>;
+	lcd_width = <1080>;
+	lcd_height = <2160>;
+	touchscreen@90 {
+		i2c_address = <0x17>;
+		ic_type = <0>; /* oncell */
+		algo_id = <1>;
+		y_max_mt = <2160>;
+		x_max_mt = <1080>;
+		y_max = <2160>;
+		x_max = <1080>;
+		irq_config = <0>;
+		raw_data_limit ="507", "248", /* mutual raw cap max min*/
+				"60", "60", /* mutual raw cap gap col max raw max*/
+				"40", "-40", /* mutual detla max min*/
+				"-800", "-2400", /* self raw cap long(rx) max min*/
+				"-800", "-2600", /* self raw cap short(tx) max min*/
+				"999999", "-999999", /* self detla long(rx) max min*/
+				"999999", "-999999"; /* self detla short(tx) max min*/
+		cal_data_limit = "99999", "99999", "99999";
+		sec_ts-dvdd-supply = <&ldo16>;
+		sec_ts-avdd-supply = <&ldo9>;
+		dvdd_value = <1850000>;
+		avdd_value = <3300000>;
+		i2c-burstmax = <256>;
+		max_x = <1079>;
+		max_y = <2159>;
+		vddio_regulator_type = <1>;
+		vddio_gpio_type = <0>;
+		vddio_ctrl_gpio = <&gpio8 3 0>;
+		vci_regulator_type = <1>;
+		vci_gpio_type = <0>;
+		vci_ctrl_gpio = <&gpio8 3 0>;
+		supported_func_indicater = <1>;
+		use_lcdkit_power_notify = <1>;
+		tp_test_type = "Normalize_type:judge_different_reslut";
+		BLAC570900 {
+			producer = "sdc";
+			roi_data_addr = <0x75>;
+			roi_control_bit = <0>;
+			roi_control_addr = <0x76>;
+			roi_supported = <1>;
+		};
+	};
+	synaptics: touchscreen@70 {
+		compatible = "synaptics";
+		algo_id = <1>;
+		raw_data_limit ="999999", "-999999", /* mutual raw cap max min*/
+				"999999", "-999999", /* mutual raw cap gap col max raw max*/
+				"999999", "-999999", /* mutual detla max min*/
+				"999999", "-999999", /* self raw cap long(rx) max min*/
+				"999999", "-999999", /* self raw cap short(tx) max min*/
+				"999999", "-999999", /* self detla long(rx) max min*/
+				"999999", "-999999"; /* self detla short(tx) max min*/
+		need_wd_check_status = <0>;
+		x_max = <1080>;
+		y_max = <2160>;
+		x_max_mt = <1080>;
+		y_max_mt = <2160>;
+		irq_config = <0>;
+		producer = "Tianma";
+		projectid_len = <10>;
+		ic_type = <6>;
+		is_multi_protocal = <2>;
+		delay_for_fw_update = <1>;
+		vci_gpio_type = <0>;
+		vci_regulator_type = <1>;
+		vddio_gpio_type = <0>;
+		vddio_regulator_type = <1>;
+		slave_address = <0x70>;
+		unite_cap_test_interface =<1>;
+		pinctrl-1 = <&gpio212_cfg_idle>;
+		pinctrl-0 = <&gpio212_cfg_func>;
+		pinctrl-names = "default", "idle";
+		synaptics-vdd-supply = <&ldo9>;
+		synaptics-io-supply = <&ldo16>;
+		vci_value = <3300000>;
+		need_set_vddio_value = <1800000>;
+		use_lcdkit_power_notify = <1>;
+		BLAC501100{
+			producer = "Tianma";
+			compatible = "synaptics-BLAC501100";
+			roi_data_addr = <0x0400>;
+			roi_control_bit = <0>;
+			roi_control_addr = <0x0402>;
+			roi_supported = <1>;
+			glove_switch_bit = <0>;
+			glove_switch_addr = <0x001D>;
+			holster_switch_bit = <1>;
+			holster_switch_addr = <0x001D>;
+			charger_supported = <0>;
+			charger_switch_bit = <5>;
+			charger_switch_addr = <0x000D>;
+			//adv_width and is_multi_protocal is a couple for new_wx_wy fuk
+			adv_width = "000";
+			//raw_data_limit = "9999", "-9999", "9999", "-9999", "9999", "-9999", "9999", "-9999";
+			capacitance_test_config = <1>;
+			report_rate_test = <0>;
+			ic_type = <6>;
+			raw_test_type = <0>;
+			rawdata_arrange_type = <2>;
+			noise_state_reg = <0x0108>;
+			//ic_status_reg = <0x0006>;
+			//touch_switch_flag = <0>;
+			touch_switch_reg = <0x000D>;
+			//touch switch bit = <2> write code to not changed
+			touch_switch_hold_off_reg = <0x0011>;
+			test_enhance_raw_data_capacitance = <0>;
+			huawei,test_capacitance_via_csvfile = <1>;
+			//csv file at /product mark 1 at /odm mark 2
+			huawei,csvfile_use_product_system = <2>;
+			huawei,trx_delta_test_support = <1>;
+			self_cap_test = <1>;
+			huawei,support_ext_trex_short_test = <1>;
+			huawei,blac501100_tianma_flag = <1>;
+		};
+	};
+};

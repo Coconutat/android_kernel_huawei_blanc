@@ -1,0 +1,17 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/include/ "BLANC_BA09_LX9_V4_BAK_config.dtsi"
+
+/ {
+	hisi,boardid = <6 4 7 5>;
+	hisi,boardname = "BLANC_BA09_LX9_VN1_RF";
+	hisi,product_id = <0x3901BC00>;
+	hisi,modem_id = <0x3901BC00>;
+};

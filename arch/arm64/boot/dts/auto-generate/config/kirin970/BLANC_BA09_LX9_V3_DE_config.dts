@@ -1,0 +1,22 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "BLANC_BA09_LX9_V3_C_config.dtsi"
+/include/ "BLANC_BA09_LX9_V3_DE_pin.dtsi"
+/include/ "BLANC_BA09_LX9_V3_DE_sec_pin.dtsi"
+/include/ "BLANC_BA09_LX9_V3_DE_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 4 7 2>;
+	hisi,boardname = "BLANC_BA09_LX9_V3_DE";
+	hisi,product_id = <0x3901AC00>;
+	hisi,modem_id = <0x3901AC00>;
+};

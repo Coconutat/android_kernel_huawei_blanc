@@ -1,0 +1,507 @@
+&sensorhub{
+		light{
+			als1{
+				compatible="huawei,B";
+				bus_number = <0x0>;
+				reg=<0x29>;
+				chip_id_register = <0x92>;
+				chip_id_value = <0x72>;
+				file_id = <105>;
+				sensor_list_info_id = <0x03>;
+				sensor_type = "als";
+				poll_interval = <350>;
+				threshold_value = <0x1>;
+				GA1 = <0x1046>;
+				GA2 = <0xf3c>;
+				GA3 = <0x1194>;
+				tp_color = <0x0>;
+				again = <0x1>;
+				gpio_int1 = <0x38 0x6 0x0>;
+				atime = <0xdb>;
+				init_time = <0x96>;
+				status = "ok";
+				als_phone_type = <47>;
+				als_phone_version = <10>;
+				is_cali_supported = <1>;
+				als_extend_data = <0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0>;
+				sensorlist_name="als-b";
+				vendor="B";
+			};
+			als2{
+
+				compatible="huawei,A";
+				bus_number = <0x0>;
+				reg=<0x39>;
+				chip_id_register = <0x91>;
+				chip_id_value = <0x01 0x11 0x21 0x31>;
+				file_id = <104>;
+				sensor_list_info_id = <0x03>;
+				sensor_type = "als";
+				poll_interval = <350>;
+				threshold_value = <0x1>;
+				GA1 = <0x1046>;
+				GA2 = <0xf3c>;
+				GA3 = <0x1194>;
+				tp_color = <0x0>;
+				again = <0x1>;
+				gpio_int1 = <0x38 0x6 0x0>;
+				atime = <0xdb>;
+				init_time = <0x96>;
+				status = "ok";
+				als_phone_type = <47>; /*CMB*/
+				als_phone_version = <10>;
+				is_cali_supported = <1>;
+				als_extend_data = <0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0>;
+				sensorlist_name="als-A";
+				vendor="A";
+			};
+			als3{
+				compatible="huawei,A";
+				bus_number = <0x0>;
+				reg=<0x29>;
+				chip_id_register = <0x92>;
+				chip_id_value = <0x50>;
+				file_id = <104>;
+				sensor_list_info_id = <0x03>;
+				sensor_type = "als";
+				poll_interval = <350>;
+				threshold_value = <0x1>;
+				GA1 = <0x1046>;
+				GA2 = <0xf3c>;
+				GA3 = <0x1194>;
+				tp_color = <0x0>;
+				again = <0x1>;
+				gpio_int1 = <0x38 0x6 0x0>;
+				atime = <0xdb>;
+				init_time = <0x96>;
+				status = "ok";
+				als_phone_type = <47>; /*CMB*/
+				als_phone_version = <10>;
+				is_cali_supported = <1>;
+				als_extend_data = <0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0>;
+				sensorlist_name="als-A";
+				vendor="A";
+			};
+		};
+		proximity{
+			ps1{
+				compatible="huawei,txc-pa224";
+				reg=<0x1e>;
+				chip_id_register=<0x7F>;
+				chip_id_value=<0x11>;
+				file_id=<39>;
+				min_proximity_value=<220>;
+				pwindows_value=<10>;
+				pwave_value=<10>;
+				threshold_value=<31>;
+				gpio_int1=<&gpio27 1 0>;
+				poll_interval = <80>;
+				ps_oily_threshold = <2>;
+				oily_max_near_pdata=<230>;
+				max_oily_add_pdata=<50>;
+				max_near_pdata_loop=<4>;
+				oily_count_size=<12>;
+				status = "ok";
+				sensorlist_name="proximity-pa224";
+				vendor="txc";
+			};
+			ps2{
+				compatible="huawei,avago-apds9110";
+				bus_number=<0>;
+				reg=<0x53>;
+				chip_id_register=<0x6>;
+				chip_id_value=<0xB1>;
+				file_id=<49>;
+				sensor_list_info_id = <0x04>;
+				sensor_type="ps";
+				min_proximity_value=<220>;
+				pwindows_value=<10>;
+				pwave_value=<10>;
+				threshold_value=<25>;
+				gpio_int1=<&gpio27 1 0>;
+				poll_interval = <80>;
+				ps_oily_threshold = <3>;
+				oily_max_near_pdata=<250>;
+				max_oily_add_pdata=<110>;
+				max_near_pdata_loop=<6>;
+				oily_count_size=<18>;
+				status = "ok";
+				sensorlist_name="proximity-apds9110";
+				vendor="avago";
+			};
+
+		};
+		gsensor {
+			acc1{
+				compatible="huawei,acc_bmi160";
+				bus_number =<0>;
+				reg=<0x68>;
+				chip_id_register=<0x0>;
+				chip_id_value=<0xd1>;
+				file_id=<33>;
+				sensor_list_info_id =<0>;
+				sensor_type ="acc";
+				axis_map_x =<1>;
+				axis_map_y =<0>;
+				axis_map_z =<2>;
+				negate_x =<1>;
+				negate_y =<1>;
+				negate_z =<1>;
+				offset_x =<0>;
+				offset_y =<0>;
+				offset_z =<0>;
+				sensitivity_x =<1>;
+				sensitivity_y =<1>;
+				sensitivity_z =<1>;
+				gpio_int1 =<&gpio26 0 0>;
+				gpio_int2=<&gpio25 7 0>;
+				gpio_int2_sh=<1010>;
+				calibrate_style =<0>;
+				minDelay=<4000>;
+				x_calibrate_thredhold = <250>;
+				y_calibrate_thredhold = <250>;
+				z_calibrate_thredhold = <320>;
+				sensorlist_name="accelerometer-bmi160";
+				vendor="bosch";
+				status = "ok";
+			};
+			acc2{
+				compatible="huawei,acc_lsm6ds3";
+				bus_number =<0>;
+				reg=<0x6a>;
+				chip_id_register=<0x0f>;
+				chip_id_value=<0x69>;
+				file_id=<34>;
+				sensor_list_info_id =<0>;
+				sensor_type ="acc";
+				axis_map_x =<0>;
+				axis_map_y =<1>;
+				axis_map_z =<2>;
+				negate_x =<0>;
+				negate_y =<1>;
+				negate_z =<1>;
+				offset_x =<0>;
+				offset_y =<0>;
+				offset_z =<0>;
+				sensitivity_x =<1>;
+				sensitivity_y =<1>;
+				sensitivity_z =<1>;
+				poll_interval =<10>;
+				gpio_int1 =<&gpio26 0 0>;
+				gpio_int2=<&gpio25 7 0>;
+				gpio_int2_sh=<1010>;
+				device_type=<0>;
+				calibrate_style =<0>;
+				minDelay=<4000>;
+				x_calibrate_thredhold = <250>;
+				y_calibrate_thredhold = <250>;
+				z_calibrate_thredhold = <320>;
+				wakeup_duration =<0x20>;/*set up 1 duration*/
+				sensorlist_name="accelerometer-lsm6ds3";
+				vendor="st";
+				status = "ok";
+			};
+			acc3{
+				compatible="huawei,acc_lsm6ds3-c";
+				bus_number =<0>;
+				reg=<0x6a>;
+				chip_id_register=<0x0f>;
+				chip_id_value=<0x6a>;
+				file_id=<34>;
+				sensor_list_info_id =<0>;
+				sensor_type ="acc";
+				axis_map_x =<0>;
+				axis_map_y =<1>;
+				axis_map_z =<2>;
+				negate_x =<0>;
+				negate_y =<1>;
+				negate_z =<1>;
+				offset_x =<0>;
+				offset_y =<0>;
+				offset_z =<0>;
+				sensitivity_x =<1>;
+				sensitivity_y =<1>;
+				sensitivity_z =<1>;
+				poll_interval =<10>;
+				gpio_int1 =<&gpio26 0 0>;
+				gpio_int2=<&gpio25 7 0>;
+				device_type=<1>;
+				gpio_int2_sh=<1010>;
+				calibrate_style =<0>;
+				wakeup_duration =<0x20>;/*set up 1 duration*/
+				minDelay=<4000>;
+				x_calibrate_thredhold = <250>;
+				y_calibrate_thredhold = <250>;
+				z_calibrate_thredhold = <320>;
+				sensorlist_name="accelerometer-lsm6ds3-c";
+				vendor="st";
+				status = "ok";
+			};
+		};
+
+		gyroscope {
+			gyro1{
+				bus_number =<0>;
+				reg=<0x68>;
+				chip_id_register=<0x0>;
+				chip_id_value=<0xd1>;
+				file_id=<35>;
+				sensor_list_info_id =<5>;
+				sensor_type ="gyro";
+				axis_map_x =<1>;
+				axis_map_y =<0>;
+				axis_map_z =<2>;
+				negate_x =<1>;
+				negate_y =<1>;
+				negate_z =<1>;
+				poll_interval =<10>;
+				gpio_int1 =<&gpio26 2 0>;
+				gpio_int2=<&gpio25 7 0>;
+				gpio_int2_sh=<1010>;
+				calibrate_thredhold = <278>;
+				minDelay=<4000>;
+				sensorlist_name="gyroscope-bmi160";
+				vendor="bosch";
+				status = "ok";
+			};
+			gyro2{
+				bus_number =<0>;
+				reg=<0x6a>;
+				chip_id_register=<0x0f>;
+				chip_id_value=<0x69>;
+				file_id=<36>;
+				sensor_list_info_id =<5>;
+				sensor_type ="gyro";
+				/*sensor-vdd-supply = <&ldo24>;*/
+				axis_map_x =<0>;
+				axis_map_y =<1>;
+				axis_map_z =<2>;
+				negate_x =<0>;
+				negate_y =<1>;
+				negate_z =<1>;
+				poll_interval =<10>;
+				gpio_int1 =<&gpio26 2 0>;
+				gpio_int2=<&gpio25 7 0>;
+				gpio_int2_sh=<1010>;
+				calibrate_thredhold = <572>;
+				still_calibrate_threshold =<20>;
+				minDelay=<4000>;
+				sensorlist_name="gyroscope-lsm6ds3";
+				vendor="st";
+				status = "ok";
+			};
+			gyro3{
+				bus_number =<0>;
+				reg=<0x6a>;
+				chip_id_register=<0x0f>;
+				chip_id_value=<0x6a>;
+				file_id=<36>;
+				sensor_list_info_id =<5>;
+				sensor_type ="gyro";
+				/*sensor-vdd-supply = <&ldo24>;*/
+				axis_map_x =<0>;
+				axis_map_y =<1>;
+				axis_map_z =<2>;
+				negate_x =<0>;
+				negate_y =<1>;
+				negate_z =<1>;
+				poll_interval =<10>;
+				gpio_int1 =<&gpio26 2 0>;
+				gpio_int2=<&gpio25 7 0>;
+				gpio_int2_sh=<1010>;
+				calibrate_thredhold = <572>;
+				still_calibrate_threshold =<20>;
+				minDelay=<4000>;
+				sensorlist_name="gyroscope-lsm6ds3-c";
+				vendor="st";
+				status = "ok";
+			};
+
+		};
+		compass{
+			mag1{
+				bus_number=<0>;
+				reg=<0x0d>;
+				chip_id_register=<0x00>;
+				chip_id_value=<0x48>;
+				file_id=<37>;
+				sensor_list_info_id=<1>;
+				sensor_type="mag";
+				/*sensor-vdd-supply = <&ldo24>;*/
+				outbit=<0>;
+				softfilter = <2>;
+				calibrate_method=<2>;
+				axis_map_x=<1>;
+				axis_map_y=<0>;
+				axis_map_z=<2>;
+				negate_x=<0>;
+				negate_y=<0>;
+				negate_z=<1>;
+				poll_interval=<10>;
+				gpio_int1=<&gpio0 0 0>;
+				gpio_reset=<&gpio0 0 0>;
+				softiron_parameter = <16 39 0 0 0 0 0 0 16 39 0 0 0 0 0 0 16 39 0 0 0 0 0 0 0 0 0>;
+				sensorlist_name="mag-akm09911";
+				vendor="akm";
+				threshold_for_als_calibrate=<3500>;
+				status = "ok";
+			};
+			mag2{
+				bus_number=<0>;
+				reg=<0x2E>;
+				chip_id_register=<0x80>;
+				chip_id_value=<0x07>;
+				file_id=<66>;
+				sensor_list_info_id=<1>;
+				sensor_type="mag";
+				/*sensor-vdd-supply = <&ldo24>;*/
+				outbit=<0>;
+				softfilter = <2>;
+				calibrate_method=<2>;
+				axis_map_x=<1>;
+				axis_map_y=<0>;
+				axis_map_z=<2>;
+				negate_x=<0>;
+				negate_y=<0>;
+				negate_z=<1>;
+				poll_interval=<10>;
+				softiron_parameter = <16 39 0 0 0 0 0 0 16 39 0 0 0 0 0 0 16 39 0 0 0 0 0 0 0 0 0>;
+				sensorlist_name="mag-yas537";
+				vendor="yamaha";
+				threshold_for_als_calibrate=<2000>;
+				status = "ok";
+			};
+			mag3{
+				bus_number=<0>;
+				reg=<0x0C>;
+				chip_id_register=<0x00>;
+				chip_id_value=<0x48>;
+				file_id=<67>;
+				sensor_list_info_id=<1>;
+				sensor_type="mag";
+				/*sensor-vdd-supply = <&ldo24>;*/
+				outbit=<0>;
+				calibrate_method=<2>;
+				axis_map_x=<1>;
+				axis_map_y=<0>;
+				axis_map_z=<2>;
+				negate_x=<0>;
+				negate_y=<0>;
+				negate_z=<1>;
+				poll_interval=<10>;
+				gpio_int1=<&gpio0 0 0>;
+				gpio_reset=<&gpio0 0 0>;
+				softiron_parameter = <16 39 0 0 0 0 0 0 16 39 0 0 0 0 0 0 16 39 0 0 0 0 0 0 0 0 0>;
+				sensorlist_name="akm-akm09918";
+				vendor="akm";
+				threshold_for_als_calibrate=<3500>;
+				status = "ok";
+			};
+		};
+
+		sar{
+			sar1{
+				compatible="huawei,adi-adux1050";
+				bus_number=<0>;
+				reg=<0x2c>;
+				chip_id_register=<0x0>;
+				chip_id_value=<0xa1 0x50>;
+				chip_reg_bit16=<1>;
+				file_id=<58>;
+				sensor_type="cap_prox";
+				sensor_list_info_id=<20>;
+				/*sensor-vdd-supply = <&ldo24>;*/
+				sensorlist_name="cap_prox-adux1050";
+				vendor="ADI";
+				init_reg_val = <0x00010206 0x00020530 0x000300CC 0x00050f11 0x00063964 0x00070308
+								0x00080200 0x00090079 0x000A0005 0x00798000 0x000b5846 0x000c0308
+								0x000d0200 0x000E0042 0x000f000c 0x007a8000>;
+				poll_interval=<100>;
+				calibrate_type=<5>;
+				calibrate_order = "0";  // 0:free  1:near  2:far  3:other
+				to_ap_threshold = /bits/ 16 <0xC8 0xC9 0x00>;
+				to_modem_threshold = /bits/ 16 <32700  1500   1000   0x0000 0x0000 0x0000 0x0000 0x0010
+												10000  600    300    0x0000 0x0000 0x0000 0x0000 0x0000
+												0x0000 0x0000 0x0000 0x0000 0x0000 0x0000 0x0000 0x0000>;
+				shared_flag=<0>;
+				status = "disabled";
+			};
+		};
+
+		fingerprint{
+			finger1{
+				combo_bus_type = "spi";
+				combo_bus_num = <2>;
+				combo_data = <216>;
+				combo_tx = /bits/ 8 <0xFC>;
+				combo_rx_mask = /bits/ 8 <0xFF 0xFF>;
+				combo_rx_exp = /bits/ 8 <0x06 0x12 0x06 0x11 0x06 0x21>;
+
+
+				bus_type=<1>;
+				bus_number=<2>;
+				reg=<0x0>;
+				chip_id_register=<0xFC>;
+				chip_id_value=<0x1023>;
+				product_id_value=<54>;
+				file_id=<92>;
+				sensor_list_info_id = <0x12>;
+				sensor_type ="fingerprint";
+				poll_interval = <500>;
+				gpio_irq = <210>;
+				gpio_irq_sh = <1013>;
+				gpio_reset = <211>;
+				gpio_cs = <216>;
+				status = "ok";
+			};
+			finger2{
+				combo_bus_type = "spi";
+				combo_bus_num = <2>;
+				combo_data = <216>;
+				combo_tx = /bits/ 8 <0xF1>;
+				combo_rx_mask = /bits/ 8 <0xFF 0x00 0xFF 0xFF>;
+				combo_rx_exp = /bits/ 8 <0x04 0x00 0x00 0x25>;
+
+
+				bus_type=<1>;
+				bus_number=<2>;
+				reg=<0x0>;
+				chip_id_register=<0xFC>;
+				chip_id_value=<0x3658>;
+				product_id_value=<54>;
+				file_id=<106>;
+				sensor_list_info_id = <0x12>;
+				sensor_type ="fingerprint";
+				poll_interval = <500>;
+				gpio_irq = <210>;
+				gpio_irq_sh = <1013>;
+				gpio_reset = <211>;
+				gpio_cs = <216>;
+				status = "ok";
+			};
+			finger3{
+				combo_bus_type = "spi";
+				combo_bus_num = <2>;
+				combo_data = <216>;
+				combo_tx = /bits/ 8 <0xFC>;
+				combo_rx_mask = /bits/ 8 <0xFF 0xFF>;
+				combo_rx_exp = /bits/ 8 <0x10 0x11 0x10 0x12 0x10 0x13 0x10 0x23>;
+
+				bus_type=<1>;
+				bus_number=<2>;
+				reg=<0x0>;
+				chip_id_register=<0xFC>;
+				chip_id_value=<0x1511>;
+				product_id_value=<54>;
+				file_id=<107>;
+				sensor_list_info_id = <0x12>;
+				sensor_type ="fingerprint";
+				poll_interval = <500>;
+				gpio_irq = <210>;
+				gpio_irq_sh = <1013>;
+				gpio_reset = <211>;
+				gpio_cs = <216>;
+				status = "ok";
+			};
+		};
+	};

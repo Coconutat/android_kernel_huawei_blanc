@@ -85,6 +85,10 @@ struct udp_sock {
 
 	/* This field is dirtied by udp_recvmsg() */
 	int		forward_deficit;
+
+#ifdef CONFIG_MPTCP
+	struct sockaddr server_addr;
+#endif
 };
 
 static inline struct udp_sock *udp_sk(const struct sock *sk)

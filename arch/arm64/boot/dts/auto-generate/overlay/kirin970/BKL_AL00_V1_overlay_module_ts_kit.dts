@@ -1,0 +1,159 @@
+/*touch_panel*/
+	&ts_kit {
+		bus_type = "i2c";
+		bus_id = <7>;
+		product = "BERK";
+		irq_gpio = <&gpio26 4 0>;
+		aft_enable = <1>;
+		fp_tp_enable = <1>;
+		register_charger_notifier = <0>;
+		synaptics: touchscreen@70 {
+			compatible = "synaptics";
+			algo_id = <1>;
+			support_aft = <1>;
+			raw_data_limit = "9999", /*rawdata-max*/
+				"1", /*rawdata-min*/
+				"998", /*deltadata-max*/
+				"-998", /*deltadata-min*/
+				"9999", /*rx-to-rx-diff-max*/
+				"-9999", /*rx-to-rx-diff-min*/
+				"9999", /*tx-to-tx-diff-max*/
+				"-9999";/*tx-to-tx-diff-min*/
+			need_wd_check_status = <0>;
+			x_max = <1080>;
+			y_max = <2160>;
+			x_max_mt = <1080>;
+			y_max_mt = <2160>;
+			irq_config = <0>;
+			ic_type = <2>;
+			delay_for_fw_update = <1>;
+			vci_gpio_type = <0>;
+			vci_regulator_type = <1>;
+			vddio_gpio_type = <0>;
+			vddio_regulator_type = <1>;
+			slave_address = <0x70>;
+			unite_cap_test_interface =<1>;
+			pinctrl-1 = <&gpio212_cfg_idle>;
+			pinctrl-0 = <&gpio212_cfg_func>;
+			pinctrl-names = "default", "idle";
+			/*synaptics-vdd-supply = <&ldo17>;*/
+			synaptics-io-supply = <&ldo4>;
+			byte_to_byte_cmp_config_id = <1>;
+			BERK28140{
+				producer = "ctc";
+				compatible = "synaptics-BERK28140";
+				holster_switch_bit = <1>;
+				holster_switch_addr = <0>;
+				glove_switch_bit = <5>;
+				glove_switch_addr = <0x001b>;
+				roi_supported = <1>;
+				roi_data_addr = <0x0400>;
+				roi_control_bit = <0>;
+				roi_control_addr = <0x0408>;
+				charger_supported = <0>;
+				charger_switch_bit = <5>;
+				charger_switch_addr = <0x000d>;
+				touch_switch_flag = <1>;
+				touch_switch_reg = <0x000d>;
+				touch_switch_hold_off_reg = <0x0011>;
+				aft_data_addr = <0x401>;
+				raw_data_limit = "5000", "0", "30", "-30", "5000", "-5000", "5000", "-5000";
+				ic_type = <5>;
+				report_rate_test = <0>;
+				huawei,csvfile_use_product_system = <2>;
+				huawei,threshold_tddi_ee_short_partone = <500>;
+				huawei,threshold_tddi_ee_short_parttwo = <60>;
+				huawei,test_capacitance_via_csvfile = <1>;
+				huawei,trx_delta_test_support = <1>;
+				huawei,td43xx_ee_short_test = <1>;
+			};
+			BERK28130{
+				producer = "boe";
+				compatible = "synaptics-BERK28130";
+				holster_switch_bit = <1>;
+				holster_switch_addr = <0>;
+				glove_switch_bit = <5>;
+				glove_switch_addr = <0x0019>;
+				roi_supported = <1>;
+				roi_data_addr = <0x0400>;
+				roi_control_bit = <0>;
+				roi_control_addr = <0x0409>;
+				charger_supported = <0>;
+				charger_switch_bit = <5>;
+				charger_switch_addr = <0x000c>;
+				touch_switch_flag = <3>;
+				touch_switch_reg = <0x000c>;
+				touch_game_reg = <0x0431>;
+				game_control_bit = <0>;
+				touch_switch_hold_off_reg = <0x0010>;
+				aft_data_addr = <0x401>;
+				raw_data_limit = "5000", "0", "40", "-40", "5000", "-5000", "5000", "-5000";
+				ic_type = <5>;
+				report_rate_test = <0>;
+				huawei,csvfile_use_product_system = <2>;
+				huawei,threshold_tddi_ee_short_partone = <150>;
+				huawei,threshold_tddi_ee_short_parttwo = <70>;
+				huawei,test_capacitance_via_csvfile = <1>;
+				huawei,trx_delta_test_support = <1>;
+				huawei,td43xx_ee_short_test = <1>;
+			};
+		};
+		novatek: touchscreen@62 {
+			compatible = "novatek";
+			ic_type = <2>;
+			roi_supported = <1>;
+			support_aft = <1>;
+			need_wd_check_status = <0>;
+			x_max = <1080>;
+			y_max = <2160>;
+			x_max_mt = <1080>;
+			y_max_mt = <2160>;
+			unite_cap_test_interface = <1>;
+			tp_test_type = "Normalize_type:judge_last_result";
+			vci_gpio_type = <0>;
+			vci_regulator_type = <1>;
+			vddio_gpio_type = <0>;
+			vddio_regulator_type = <1>;
+			slave_address = <0x62>;
+			pinctrl-1 = <&gpio212_cfg_idle>;
+			pinctrl-0 = <&gpio212_cfg_func>;
+			pinctrl-names = "default", "idle";
+			/*novatek-vdd-supply = <&ldo17>;*/
+			novatek-io-supply = <&ldo4>;
+			irq_config = <3>;
+			algo_id = <1>;
+			noise_test_frame = <30>;
+			open_test_by_fw = <1>;
+			i2c_retry_time = <50>;
+			roi_delay_flag = <1>;
+			BERK40110 {
+				producer = "tianma";
+				compatible = "BERK40110";
+				roi_supported = <1>;
+				criteria_threshold_flag = <1>;
+				NvtTddi_X_Channel = <18>;
+				NvtTddi_Y_Channel = <32>;
+				touch_switch_flag = <3>;
+				huawei,csvfile_use_system = <2>;
+				huawei,test_capacitance_via_csvfile = <1>;
+				NVT_TDDI_AIN_X = <17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0>;
+				NVT_TDDI_AIN_Y = <31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0>;
+				mADCOper_Cnt = <2>;
+			};
+			BERK40020 {
+				producer = "truly";
+				compatible = "BERK40020";
+				roi_supported = <1>;
+				criteria_threshold_flag = <1>;
+				NvtTddi_X_Channel = <18>;
+				NvtTddi_Y_Channel = <32>;
+				touch_switch_flag = <1>;
+				huawei,csvfile_use_system = <2>;
+				huawei,test_capacitance_via_csvfile = <1>;
+				NVT_TDDI_AIN_X = <17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0>;
+				NVT_TDDI_AIN_Y = <31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0>;
+				mADCOper_Cnt = <2>;
+			};
+		};
+
+	};

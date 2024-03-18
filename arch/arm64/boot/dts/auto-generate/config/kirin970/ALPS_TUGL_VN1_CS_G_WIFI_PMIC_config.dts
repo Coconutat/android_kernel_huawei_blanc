@@ -1,0 +1,22 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/include/ "fastboot.dtsi"
+/include/ "ALPS_TUGL_VN1_CS_JDI_config.dtsi"
+/include/ "ALPS_TUGL_VN1_CS_G_WIFI_PMIC_pin.dtsi"
+/include/ "ALPS_TUGL_VN1_CS_G_WIFI_PMIC_sec_pin.dtsi"
+/include/ "ALPS_TUGL_VN1_CS_G_WIFI_PMIC_modem_pin.dtsi"
+
+/ {
+	hisi,boardid = <6 4 2 2>;
+	hisi,boardname = "ALPS_TUGL_VN1_CS_G_WIFI_PMIC";
+	hisi,product_id = <0x39004C00>;
+	hisi,modem_id = <0x39004C00>;
+};

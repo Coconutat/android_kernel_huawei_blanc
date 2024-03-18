@@ -1,0 +1,49 @@
+
+/**
+ * Copyright (C) 2014 Hisilicon Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/dts-v1/;
+/plugin/;
+/include/ "COL_TL00_VA_overlay.dtsi"
+
+/ {
+	board_id = <6813>;
+};
+
+&rootparam {
+        hisi,dtbo_idx = <0>;
+    hisi,boardid = <6 8 1 3>;
+    hisi,boardname = "COL_TL00_VB";
+};
+
+&charging_core{
+	iin_nonstd = <1200>;
+	ichg_nonstd = <1000>;
+	status = "ok";
+};
+	&sensorhub{
+		rpc{
+            		rpc{
+			compatible = "huawei,rpc";
+			file_id = <0x18>;
+			sensor_list_info_id = <24>;
+			sensor_type = "rpc";
+			sensorlist_name = "rpc";
+			mask = <0xFFFF 0x230 0x230 0x230 0x200 0xFFFF 0xFFFF 0xFFFF
+				0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF
+				0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF
+				0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF>;
+			table = <0xFFFF 0x210 0x220 0x200 0x0 0xFFFF 0xFFFF 0xFFFF
+				 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF
+				 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF
+				 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF 0xFFFF>;
+			default_value = <0x1D>;
+			status = "ok";
+            };
+        };
+};
