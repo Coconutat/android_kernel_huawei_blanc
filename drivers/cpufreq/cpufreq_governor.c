@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 
 #include "cpufreq_governor.h"
+#include <linux/hisi/hifreq_hotplug.h>
 
 #define CPUFREQ_DBS_MIN_SAMPLING_INTERVAL	(2 * TICK_NSEC / NSEC_PER_USEC)
 
@@ -227,6 +228,9 @@ unsigned int dbs_update(struct cpufreq_policy *policy)
 	}
 
 	policy_dbs->idle_periods = idle_periods;
+#ifdef CONFIG_HISI_BIG_MAXFREQ_HOTPLUG
+	set_bL_hifreq_load(max_load);
+#endif
 
 	return max_load;
 }

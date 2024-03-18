@@ -38,6 +38,8 @@
 #include <linux/hidraw.h>
 #include "usbhid.h"
 
+#include <linux/hisi/usb/hisi_hifi_usb.h>
+
 /*
  * Version Information
  */
@@ -292,6 +294,8 @@ static void hid_irq_in(struct urb *urb)
 				set_bit(HID_KEYS_PRESSED, &usbhid->iofl);
 			else
 				clear_bit(HID_KEYS_PRESSED, &usbhid->iofl);
+			export_usbhid_key_pressed(interface_to_usbdev(usbhid->intf),
+					test_bit(HID_KEYS_PRESSED, &usbhid->iofl));
 		}
 		break;
 	case -EPIPE:		/* stall */

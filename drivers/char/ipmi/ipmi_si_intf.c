@@ -1345,7 +1345,7 @@ static unsigned int num_slave_addrs;
 #define IPMI_MEM_ADDR_SPACE 1
 static const char * const addr_space_to_str[] = { "i/o", "mem" };
 
-static int hotmod_handler(const char *val, struct kernel_param *kp);
+static int hotmod_handler(const char *val, const struct kernel_param *kp);
 
 module_param_call(hotmod, hotmod_handler, NULL, NULL, 0200);
 MODULE_PARM_DESC(hotmod, "Add and remove interfaces.  See"
@@ -1811,7 +1811,7 @@ static struct smi_info *smi_info_alloc(void)
 	return info;
 }
 
-static int hotmod_handler(const char *val, struct kernel_param *kp)
+static int hotmod_handler(const char *val, const struct kernel_param *kp)
 {
 	char *str = kstrdup(val, GFP_KERNEL);
 	int  rv;
@@ -2447,24 +2447,12 @@ static int ipmi_pci_probe_regspacing(struct smi_info *info)
 	return DEFAULT_REGSPACING;
 }
 
-static struct pci_device_id ipmi_pci_blacklist[] = {
-	/*
-	 * This is a "Virtual IPMI device", whatever that is.  It appears
-	 * as a KCS device by the class, but it is not one.
-	 */
-	{ PCI_VDEVICE(REALTEK, 0x816c) },
-	{ 0, }
-};
-
 static int ipmi_pci_probe(struct pci_dev *pdev,
 				    const struct pci_device_id *ent)
 {
 	int rv;
 	int class_type = pdev->class & PCI_ERMC_CLASSCODE_TYPE_MASK;
 	struct smi_info *info;
-
-	if (pci_match_id(ipmi_pci_blacklist, pdev))
-		return -ENODEV;
 
 	info = smi_info_alloc();
 	if (!info)

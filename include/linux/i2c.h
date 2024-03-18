@@ -621,6 +621,10 @@ i2c_parent_is_i2c_adapter(const struct i2c_adapter *adapter)
 
 int i2c_for_each_dev(void *data, int (*fn)(struct device *, void *));
 
+#ifdef CONFIG_HUAWEI_TS
+int i2c_check_addr_busy(struct i2c_adapter *adapter, int addr);
+#endif
+
 /* Adapter locking functions, exported for shared pin cases */
 #define I2C_LOCK_ROOT_ADAPTER BIT(0)
 #define I2C_LOCK_SEGMENT      BIT(1)
@@ -806,7 +810,8 @@ struct i2c_adapter *of_get_i2c_adapter_by_node(struct device_node *node);
 extern const struct of_device_id
 *i2c_of_match_device(const struct of_device_id *matches,
 		     struct i2c_client *client);
-
+int of_i2c_get_board_info(struct device *dev, struct device_node *node,
+					  struct i2c_board_info *info);
 #else
 
 static inline struct i2c_client *of_find_i2c_device_by_node(struct device_node *node)
@@ -831,6 +836,12 @@ static inline const struct of_device_id
 	return NULL;
 }
 
+static inline int of_i2c_get_board_info(struct device *dev,
+					struct device_node *node,
+					struct i2c_board_info *info)
+{
+	return -ENOTSUPP;
+}
 #endif /* CONFIG_OF */
 
 #if IS_ENABLED(CONFIG_ACPI)

@@ -381,4 +381,6 @@ config QCOM_IOMMU
 	help
 	  Support for IOMMU on certain Qualcomm SoCs.
 
+source "drivers/iommu/hisi/Kconfig"
+
 endif # IOMMU_SUPPORT

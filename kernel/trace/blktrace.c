@@ -1894,6 +1894,16 @@ void blk_fill_rwbs(char *rwbs, unsigned int op, int bytes)
 		rwbs[i++] = 'S';
 	if (op & REQ_META)
 		rwbs[i++] = 'M';
+#if CONFIG_HISI_BLK
+	if (op & REQ_TZ)
+		rwbs[i++] = 'Z';
+	if (op & REQ_CP)
+		rwbs[i++] = 'C';
+	if (op & REQ_FG)
+		rwbs[i++] = 'H';
+	if (op & REQ_VIP)
+		rwbs[i++] = 'V';
+#endif
 
 	rwbs[i] = '\0';
 }

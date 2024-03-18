@@ -32,6 +32,7 @@
 #include <linux/io.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
+#include <linux/hisi/hisi_hkip.h>
 
 #include <asm/barrier.h>
 #include <asm/cputype.h>
@@ -487,14 +488,34 @@ void mark_rodata_ro(void)
 {
 	unsigned long section_size;
 
+	section_size = (unsigned long)__end_data_ro_after_init -
+			(unsigned long)__start_data_ro_after_init;
+	update_mapping_prot(__pa_symbol(__start_data_ro_after_init), (unsigned long)__start_data_ro_after_init,
+			    section_size, PAGE_KERNEL_RO);
+	hkip_register_ro((void *)__start_data_ro_after_init,
+			 ALIGN(section_size, PAGE_SIZE));
+
+}
+#ifdef CONFIG_DEBUG_HISI_EARLY_RODATA_PROTECTION
+void test_early_rodata_protection(void);
+#endif
+void mark_constdata_ro(void)
+{
+#ifdef CONFIG_DEBUG_HISI_EARLY_RODATA_PROTECTION
+	test_early_rodata_protection();
+#else
+	unsigned long start = (unsigned long)__start_rodata;
+	unsigned long end = (unsigned long)__init_begin;
+	unsigned long section_size = (unsigned long)end - (unsigned long)start;
+
 	/*
 	 * mark .rodata as read only. Use __init_begin rather than __end_rodata
 	 * to cover NOTES and EXCEPTION_TABLE.
 	 */
-	section_size = (unsigned long)__init_begin - (unsigned long)__start_rodata;
-	update_mapping_prot(__pa_symbol(__start_rodata), (unsigned long)__start_rodata,
+	update_mapping_prot(__pa_symbol(__start_rodata), start,
 			    section_size, PAGE_KERNEL_RO);
-
+	hkip_register_ro((void *)start, ALIGN(section_size, PAGE_SIZE));
+#endif
 	debug_checkwx();
 }
 
@@ -534,6 +555,7 @@ static int __init map_entry_trampoline(void)
 {
 	extern char __entry_tramp_text_start[];
 
+	/* change to the code which exist in kernel/git/arm64/linux.git */
 	pgprot_t prot = rodata_enabled ? PAGE_KERNEL_ROX : PAGE_KERNEL_EXEC;
 	phys_addr_t pa_start = __pa_symbol(__entry_tramp_text_start);
 
@@ -566,7 +588,7 @@ core_initcall(map_entry_trampoline);
 static void __init map_kernel(pgd_t *pgd)
 {
 	static struct vm_struct vmlinux_text, vmlinux_rodata, vmlinux_inittext,
-				vmlinux_initdata, vmlinux_data;
+				vmlinux_initdata, vmlinux_data, vmlinux_ro_after_init_data;
 
 	/*
 	 * External debuggers may need to write directly to the text
@@ -581,6 +603,8 @@ static void __init map_kernel(pgd_t *pgd)
 	 */
 	map_kernel_segment(pgd, _text, _etext, text_prot, &vmlinux_text, 0,
 			   VM_NO_GUARD);
+	map_kernel_segment(pgd, __start_data_ro_after_init, __end_data_ro_after_init, PAGE_KERNEL,
+			   &vmlinux_ro_after_init_data, NO_CONT_MAPPINGS, VM_NO_GUARD);
 	map_kernel_segment(pgd, __start_rodata, __inittext_begin, PAGE_KERNEL,
 			   &vmlinux_rodata, NO_CONT_MAPPINGS, VM_NO_GUARD);
 	map_kernel_segment(pgd, __inittext_begin, __inittext_end, text_prot,
@@ -641,6 +665,9 @@ void __init paging_init(void)
 
 	pgd_clear_fixmap();
 	memblock_free(pgd_phys, PAGE_SIZE);
+
+	/* Ensure the zero page is visible to the page table walker */
+	dsb(ishst);
 
 	/*
 	 * We only reuse the PGD from the swapper_pg_dir, not the pud + pmd

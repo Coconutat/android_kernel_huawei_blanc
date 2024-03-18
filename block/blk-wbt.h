@@ -56,6 +56,11 @@ static inline bool wbt_is_read(struct blk_issue_stat *stat)
 	return (stat->stat >> BLK_STAT_RES_SHIFT) & WBT_READ;
 }
 
+enum wbt_mode {
+	WBT_FS,
+	WBT_BLK,
+};
+
 struct rq_wait {
 	wait_queue_head_t wait;
 	atomic_t inflight;
@@ -71,6 +76,7 @@ struct rq_wb {
 	int scale_step;
 	bool scaled_max;
 
+	enum wbt_mode mode;
 	short enable_state;			/* WBT_STATE_* */
 
 	/*
@@ -97,6 +103,11 @@ struct rq_wb {
 	struct rq_wait rq_wait[WBT_NUM_RWQ];
 };
 
+static inline enum wbt_mode wbt_mode(struct rq_wb *rwb)
+{
+	return rwb->mode;
+}
+
 static inline unsigned int wbt_inflight(struct rq_wb *rwb)
 {
 	unsigned int i, ret = 0;
@@ -110,13 +121,13 @@ static inline unsigned int wbt_inflight(struct rq_wb *rwb)
 #ifdef CONFIG_BLK_WBT
 
 void __wbt_done(struct rq_wb *, enum wbt_flags);
-void wbt_done(struct rq_wb *, struct blk_issue_stat *);
+void wbt_done(struct rq_wb *, struct blk_issue_stat *, bool);
 enum wbt_flags wbt_wait(struct rq_wb *, struct bio *, spinlock_t *);
 int wbt_init(struct request_queue *);
 void wbt_exit(struct request_queue *);
 void wbt_update_limits(struct rq_wb *);
 void wbt_requeue(struct rq_wb *, struct blk_issue_stat *);
-void wbt_issue(struct rq_wb *, struct blk_issue_stat *);
+void wbt_issue(struct rq_wb *, struct blk_issue_stat *, bool);
 void wbt_disable_default(struct request_queue *);
 void wbt_enable_default(struct request_queue *);
 
@@ -130,7 +141,7 @@ u64 wbt_default_latency_nsec(struct request_queue *);
 static inline void __wbt_done(struct rq_wb *rwb, enum wbt_flags flags)
 {
 }
-static inline void wbt_done(struct rq_wb *rwb, struct blk_issue_stat *stat)
+static inline void wbt_done(struct rq_wb *rwb, struct blk_issue_stat *stat, bool fg)
 {
 }
 static inline enum wbt_flags wbt_wait(struct rq_wb *rwb, struct bio *bio,
@@ -151,7 +162,7 @@ static inline void wbt_update_limits(struct rq_wb *rwb)
 static inline void wbt_requeue(struct rq_wb *rwb, struct blk_issue_stat *stat)
 {
 }
-static inline void wbt_issue(struct rq_wb *rwb, struct blk_issue_stat *stat)
+static inline void wbt_issue(struct rq_wb *rwb, struct blk_issue_stat *stat, bool fg)
 {
 }
 static inline void wbt_disable_default(struct request_queue *q)

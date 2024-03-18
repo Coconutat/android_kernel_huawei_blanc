@@ -61,7 +61,7 @@ jiffies = jiffies_64;
 #define TRAMP_TEXT					\
 	. = ALIGN(PAGE_SIZE);				\
 	VMLINUX_SYMBOL(__entry_tramp_text_start) = .;	\
-	*(.entry.tramp.text)				\
+	KEEP(*(.entry.tramp.text))			\
 	. = ALIGN(PAGE_SIZE);				\
 	VMLINUX_SYMBOL(__entry_tramp_text_end) = .;
 #else
@@ -105,6 +105,8 @@ SECTIONS
 
 	. = KIMAGE_VADDR + TEXT_OFFSET;
 
+	. = ALIGN(SZ_64K);
+	_protect_start = .;
 	.head.text : {
 		_text = .;
 		HEAD_TEXT
@@ -132,12 +134,25 @@ SECTIONS
 		*(.got)			/* Global offset table		*/
 	}
 
+#ifdef CONFIG_HW_LOGGER
+	. = ALIGN(32);
+	__start_hwlog_tag = .;
+	__start_hwlog_tag : {
+		*(__hwlog_tag)
+	}
+	. = ALIGN(SEGMENT_ALIGN);
+	__stop_hwlog_tag = .;
+#endif
+
 	. = ALIGN(SEGMENT_ALIGN);
 	_etext = .;			/* End of text section */
 
-	RO_DATA(PAGE_SIZE)		/* everything from this point to     */
-	EXCEPTION_TABLE(8)		/* __init_begin will be marked RO NX */
+	RO_AFTER_INIT_SECTION(PAGE_SIZE)	/* everything from this point */
+	RO_DATA(PAGE_SIZE)			/* to __init_begin will be    */
+	EXCEPTION_TABLE(8)			/* marked RO NX		      */
 	NOTES
+	. = ALIGN(SZ_64K);
+	_protect_end = .; /* begin from _protect_start to _protect_end, only access by acpu */
 
 	. = ALIGN(SEGMENT_ALIGN);
 	__init_begin = .;
@@ -151,11 +166,11 @@ SECTIONS
 	. = ALIGN(4);
 	.altinstructions : {
 		__alt_instructions = .;
-		*(.altinstructions)
+		KEEP(*(.altinstructions))
 		__alt_instructions_end = .;
 	}
 	.altinstr_replacement : {
-		*(.altinstr_replacement)
+		KEEP(*(.altinstr_replacement))
 	}
 
 	. = ALIGN(PAGE_SIZE);

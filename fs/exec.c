@@ -72,6 +72,10 @@
 
 #include <trace/events/sched.h>
 
+#ifdef CONFIG_HWAA
+#include <huawei_platform/hwaa/hwaa_proc_hooks.h>
+#endif
+
 int suid_dumpable = 0;
 
 static LIST_HEAD(formats);
@@ -311,7 +315,11 @@ static int __bprm_mm_init(struct linux_binprm *bprm)
 	vma->vm_start = vma->vm_end - PAGE_SIZE;
 	vma->vm_flags = VM_SOFTDIRTY | VM_STACK_FLAGS | VM_STACK_INCOMPLETE_SETUP;
 	vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	INIT_VMA(vma);
+#else
 	INIT_LIST_HEAD(&vma->anon_vma_chain);
+#endif
 
 	err = insert_vm_struct(mm, vma);
 	if (err)
@@ -1303,7 +1311,7 @@ EXPORT_SYMBOL(flush_old_exec);
 void would_dump(struct linux_binprm *bprm, struct file *file)
 {
 	struct inode *inode = file_inode(file);
-	if (inode_permission(inode, MAY_READ) < 0) {
+	if (inode_permission2(file->f_path.mnt, inode, MAY_READ) < 0) {
 		struct user_namespace *old, *user_ns;
 		bprm->interp_flags |= BINPRM_FLAGS_ENFORCE_NONDUMP;
 
@@ -1844,7 +1852,21 @@ int do_execve(struct filename *filename,
 {
 	struct user_arg_ptr argv = { .ptr.native = __argv };
 	struct user_arg_ptr envp = { .ptr.native = __envp };
+
+#ifdef CONFIG_HWAA
+	int pre_execve_ret;
+	int execve_ret;
+	if (IS_ERR(filename))
+		return PTR_ERR(filename);
+	pre_execve_ret = hwaa_proc_pre_execve(filename->name);
+	execve_ret = do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
+	if (!pre_execve_ret && !execve_ret) {
+		hwaa_proc_post_execve(current->tgid);
+	}
+	return execve_ret;
+#else
 	return do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
+#endif
 }
 
 int do_execveat(int fd, struct filename *filename,

@@ -116,6 +116,30 @@
 #include <net/sock_reuseport.h>
 #include <net/addrconf.h>
 
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+#include <hwnet/ipv4/wifi_delayst.h>
+#endif
+
+#ifdef CONFIG_DOZE_FILTER
+#include <huawei_platform/power/wifi_filter/wifi_filter.h>
+#endif
+
+#ifdef CONFIG_HUAWEI_XENGINE
+#include <huawei_platform/emcom/emcom_xengine.h>
+#endif
+
+#ifdef CONFIG_HW_HIDATA_HIMOS
+#include <huawei_platform/net/himos/hw_himos_udp_stats.h>
+#endif
+
+#ifdef CONFIG_CHR_NETLINK_MODULE
+#include <hwnet/chr/chr_interface.h>
+#endif
+
+#ifdef CONFIG_MPTCP_EPC
+#include <net/mptcp_epc.h>
+#endif
+
 struct udp_table udp_table __read_mostly;
 EXPORT_SYMBOL(udp_table);
 
@@ -131,6 +155,9 @@ EXPORT_SYMBOL(sysctl_udp_wmem_min);
 atomic_long_t udp_memory_allocated;
 EXPORT_SYMBOL(udp_memory_allocated);
 
+#ifdef CONFIG_HW_NETWORK_AWARE
+extern void tcp_network_aware(bool isRecving);
+#endif
 #define MAX_UDP_PORTS 65536
 #define PORTS_PER_CHAIN (MAX_UDP_PORTS / UDP_HTABLE_SIZE_MIN)
 
@@ -293,6 +320,13 @@ int udp_lib_get_port(struct sock *sk, unsigned short snum,
 	} else {
 		hslot = udp_hashslot(udptable, net, snum);
 		spin_lock_bh(&hslot->lock);
+
+		if (inet_is_local_reserved_port(net, snum) &&
+			!sysctl_local_reserved_ports_bind_ctrl &&
+			(!sysctl_local_reserved_ports_bind_pid ||
+			 sysctl_local_reserved_ports_bind_pid != current->tgid))
+			goto fail_unlock;
+
 		if (hslot->count > 10) {
 			int exist;
 			unsigned int slot2 = udp_sk(sk)->udp_portaddr_hash ^ snum;
@@ -793,7 +827,9 @@ static int udp_send_skb(struct sk_buff *skb, struct flowi4 *fl4)
 	int offset = skb_transport_offset(skb);
 	int len = skb->len - offset;
 	__wsum csum = 0;
-
+#ifdef CONFIG_HW_HIDATA_HIMOS
+	int skb_len = skb->len;
+#endif
 	/*
 	 * Create a UDP header
 	 */
@@ -833,9 +869,13 @@ send:
 				      UDP_MIB_SNDBUFERRORS, is_udplite);
 			err = 0;
 		}
-	} else
+	} else {
 		UDP_INC_STATS(sock_net(sk),
 			      UDP_MIB_OUTDATAGRAMS, is_udplite);
+#ifdef CONFIG_HW_HIDATA_HIMOS
+		himos_udp_stats(sk, 0, skb_len);
+#endif
+	}
 	return err;
 }
 
@@ -853,7 +893,11 @@ int udp_push_pending_frames(struct sock *sk)
 	skb = ip_finish_skb(sk, fl4);
 	if (!skb)
 		goto out;
-
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+	if(DELAY_STATISTIC_SWITCH_ON) {
+		delay_record_first_combine(sk,skb,TP_SKB_DIRECT_SND,TP_SKB_TYPE_UDP);
+	}
+#endif
 	err = udp_send_skb(skb, fl4);
 
 out:
@@ -882,6 +926,14 @@ int udp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
 	int (*getfrag)(void *, char *, int, int, int, struct sk_buff *);
 	struct sk_buff *skb;
 	struct ip_options_data opt_copy;
+#ifdef CONFIG_HUAWEI_XENGINE
+	bool bAccelerate = false;
+#endif
+
+#ifdef CONFIG_MPTCP_EPC
+	struct sockaddr_in *server_addr = (struct sockaddr_in *) (&(up->server_addr));
+	int mutp_tot_len = 0;
+#endif
 
 	if (len > 0xFFFF)
 		return -EMSGSIZE;
@@ -893,6 +945,17 @@ int udp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
 	if (msg->msg_flags & MSG_OOB) /* Mirror BSD error message compatibility */
 		return -EOPNOTSUPP;
 
+#ifdef CONFIG_HW_NETWORK_AWARE
+	tcp_network_aware(false);
+#endif
+#ifdef CONFIG_HUAWEI_XENGINE
+	bAccelerate = emcom_xengine_hook_ul_stub(sk);
+	if (!bAccelerate)
+		EMCOM_XENGINE_SET_ACCSTATE(sk, EMCOM_XENGINE_ACC_NORMAL);
+#endif
+#ifdef CONFIG_HUAWEI_BASTET
+	BST_FG_Custom_Process(sk, msg, (uint8_t)BST_FG_UDP_BITMAP);
+#endif
 	ipc.opt = NULL;
 	ipc.tx_flags = 0;
 	ipc.ttl = 0;
@@ -929,7 +992,9 @@ int udp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
 			if (usin->sin_family != AF_UNSPEC)
 				return -EAFNOSUPPORT;
 		}
-
+#ifdef CONFIG_MPTCP_EPC
+		mutp_rewrite_dst_addr(sk, (struct sockaddr *)usin);
+#endif
 		daddr = usin->sin_addr.s_addr;
 		dport = usin->sin_port;
 		if (dport == 0)
@@ -944,6 +1009,11 @@ int udp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
 		 */
 		connected = 1;
 	}
+
+#ifdef CONFIG_MPTCP_EPC
+	mutp_tot_len = (server_addr->sin_addr.s_addr != 0 && server_addr->sin_port != 0) ?
+		MUTP_HEADER_LEN + sizeof(struct iphdr) + (ipc.opt ? ipc.opt->opt.optlen : 0) + sizeof(struct udphdr) : 0;
+#endif
 
 	ipc.sockc.tsflags = sk->sk_tsflags;
 	ipc.addr = inet->inet_saddr;
@@ -1045,12 +1115,30 @@ back_from_confirm:
 
 	/* Lockless fast path for the non-corking case. */
 	if (!corkreq) {
+#ifdef CONFIG_MPTCP_EPC
+		skb = ip_make_skb(sk, fl4, getfrag, msg, ulen + mutp_tot_len,
+				  sizeof(struct udphdr) + mutp_tot_len,
+				  &ipc, &rt,
+				  msg->msg_flags);
+
+		mutp_fill_mutp_header(sk, skb);
+#else
 		skb = ip_make_skb(sk, fl4, getfrag, msg, ulen,
 				  sizeof(struct udphdr), &ipc, &rt,
 				  msg->msg_flags);
+#endif
 		err = PTR_ERR(skb);
 		if (!IS_ERR_OR_NULL(skb))
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+		{
+			if(DELAY_STATISTIC_SWITCH_ON) {
+				delay_record_first_combine(sk,skb,TP_SKB_DIRECT_SND,TP_SKB_TYPE_UDP);
+			}
+#endif
 			err = udp_send_skb(skb, fl4);
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+		}
+#endif
 		goto out;
 	}
 
@@ -1583,6 +1671,9 @@ int udp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int noblock,
 	int err;
 	int is_udplite = IS_UDPLITE(sk);
 	bool checksum_valid = false;
+#ifdef CONFIG_MPTCP_EPC
+	bool is_mutp = false;
+#endif
 
 	if (flags & MSG_ERRQUEUE)
 		return ip_recv_error(sk, msg, len, addr_len);
@@ -1594,8 +1685,19 @@ try_again:
 	if (!skb)
 		return err;
 
+#ifdef CONFIG_HW_NETWORK_AWARE
+	tcp_network_aware(true);
+#endif
+#ifdef CONFIG_CHR_NETLINK_MODULE
+	chr_update_buf_time(ktime_to_ns(skb->tstamp), SOL_UDP);
+#endif
 	ulen = udp_skb_len(skb);
 	copied = len;
+
+#ifdef CONFIG_MPTCP_EPC
+	is_mutp = mutp_decode_recv(skb, true, &off);
+#endif
+
 	if (copied > ulen - off)
 		copied = ulen - off;
 	else if (copied < ulen)
@@ -1637,17 +1739,25 @@ try_again:
 		return err;
 	}
 
-	if (!peeked)
+	if (!peeked) {
 		UDP_INC_STATS(sock_net(sk),
 			      UDP_MIB_INDATAGRAMS, is_udplite);
+#ifdef CONFIG_HW_HIDATA_HIMOS
+		himos_udp_stats(sk, ulen, 0);
+#endif
+	}
 
 	sock_recv_ts_and_drops(msg, sk, skb);
 
 	/* Copy the address. */
 	if (sin) {
 		sin->sin_family = AF_INET;
+#ifndef CONFIG_MPTCP_EPC
 		sin->sin_port = udp_hdr(skb)->source;
 		sin->sin_addr.s_addr = ip_hdr(skb)->saddr;
+#else
+		mutp_rewrite_msg_addr(is_mutp, skb, sin);
+#endif
 		memset(sin->sin_zero, 0, sizeof(sin->sin_zero));
 		*addr_len = sizeof(*sin);
 	}
@@ -1657,7 +1767,11 @@ try_again:
 	err = copied;
 	if (flags & MSG_TRUNC)
 		err = ulen;
-
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+	if(DELAY_STATISTIC_SWITCH_ON) {
+		delay_record_rcv_combine(skb,sk,TP_SKB_TYPE_UDP);
+	}
+#endif
 	skb_consume_udp(sk, skb, peeking ? -err : err);
 	return err;
 
@@ -1859,7 +1973,9 @@ static int udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 		encap_rcv = ACCESS_ONCE(up->encap_rcv);
 		if (encap_rcv) {
 			int ret;
-
+#ifdef CONFIG_HW_HIDATA_HIMOS
+			int len = skb->len;
+#endif
 			/* Verify checksum before giving to encap */
 			if (udp_lib_checksum_complete(skb))
 				goto csum_error;
@@ -1869,6 +1985,9 @@ static int udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 				__UDP_INC_STATS(sock_net(sk),
 						UDP_MIB_INDATAGRAMS,
 						is_udplite);
+#ifdef CONFIG_HW_HIDATA_HIMOS
+				himos_udp_stats(sk, len, 0);
+#endif
 				return -ret;
 			}
 		}
@@ -2161,6 +2280,9 @@ int __udp4_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 	 * Hmm.  We got an UDP packet to a port to which we
 	 * don't wanna listen.  Ignore it.
 	 */
+	#ifdef CONFIG_DOZE_FILTER
+		get_filter_infoEx(skb);
+	#endif
 	kfree_skb(skb);
 	return 0;
 

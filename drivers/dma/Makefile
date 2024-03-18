@@ -74,3 +74,5 @@ obj-$(CONFIG_ST_FDMA) += st_fdma.o
 
 obj-y += qcom/
 obj-y += xilinx/
+obj-$(CONFIG_HISI_DMA) += hisi_dma.o
+obj-$(CONFIG_HISI_DMA) += hisi_dma_64.o

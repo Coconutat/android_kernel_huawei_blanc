@@ -14,8 +14,12 @@
 
 #include "blk.h"
 
-static DEFINE_PER_CPU(struct list_head, blk_cpu_done);
-
+#ifdef CONFIG_HISI_BLK
+DEFINE_PER_CPU(struct list_head, blk_cpu_done);
+EXPORT_PER_CPU_SYMBOL(blk_cpu_done);
+#else
+static EXPORT_PER_CPU_SYMBOL(blk_cpu_done);
+#endif
 /*
  * Softirq action handler - move entries to local list and loop over them
  * while passing them to the queue registered handler.

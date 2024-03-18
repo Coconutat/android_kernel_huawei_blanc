@@ -40,6 +40,13 @@
 
 #define DM_MSG_PREFIX "crypt"
 
+#ifdef CONFIG_HUAWEI_IO_TRACING
+#include <trace/iotrace.h>
+DEFINE_TRACE(block_crypt_dec_pending);
+DEFINE_TRACE(block_kcryptd_crypt);
+DEFINE_TRACE(block_crypt_map);
+#endif
+
 /*
  * context holding the current state of a multi-part conversion
  */
@@ -49,7 +56,7 @@ struct convert_context {
 	struct bio *bio_out;
 	struct bvec_iter iter_in;
 	struct bvec_iter iter_out;
-	u64 cc_sector;
+	sector_t cc_sector;
 	atomic_t cc_pending;
 	union {
 		struct skcipher_request *req;
@@ -81,7 +88,7 @@ struct dm_crypt_request {
 	struct convert_context *ctx;
 	struct scatterlist sg_in[4];
 	struct scatterlist sg_out[4];
-	u64 iv_sector;
+	sector_t iv_sector;
 };
 
 struct crypt_config;
@@ -172,7 +179,7 @@ struct crypt_config {
 		struct iv_lmk_private lmk;
 		struct iv_tcw_private tcw;
 	} iv_gen_private;
-	u64 iv_offset;
+	sector_t iv_offset;
 	unsigned int iv_size;
 	unsigned short int sector_size;
 	unsigned char sector_shift;
@@ -935,7 +942,7 @@ static int dm_crypt_integrity_io_alloc(struct dm_crypt_io *io, struct bio *bio)
 	if (IS_ERR(bip))
 		return PTR_ERR(bip);
 
-	tag_len = io->cc->on_disk_tag_size * (bio_sectors(bio) >> io->cc->sector_shift);
+	tag_len = io->cc->on_disk_tag_size * bio_sectors(bio);
 
 	bip->bip_iter.bi_size = tag_len;
 	bip->bip_iter.bi_sector = io->cc->start + io->sector;
@@ -1492,6 +1499,10 @@ static void crypt_dec_pending(struct dm_crypt_io *io)
 	if (io->ctx.r.req)
 		crypt_free_req(cc, io->ctx.r.req, base_bio);
 
+#ifdef CONFIG_HUAWEI_IO_TRACING
+               trace_block_crypt_dec_pending(base_bio);
+#endif
+
 	if (unlikely(io->integrity_metadata_from_pool))
 		mempool_free(io->integrity_metadata, io->cc->tag_pool);
 	else
@@ -1820,6 +1831,10 @@ static void kcryptd_async_done(struct crypto_async_request *async_req,
 static void kcryptd_crypt(struct work_struct *work)
 {
 	struct dm_crypt_io *io = container_of(work, struct dm_crypt_io, work);
+
+#ifdef CONFIG_HUAWEI_IO_TRACING
+               trace_block_kcryptd_crypt(io->base_bio);
+#endif
 
 	if (bio_data_dir(io->base_bio) == READ)
 		kcryptd_crypt_read_convert(io);
@@ -2413,21 +2428,9 @@ static int crypt_ctr_cipher_new(struct dm_target *ti, char *cipher_in, char *key
 	 * capi:cipher_api_spec-iv:ivopts
 	 */
 	tmp = &cipher_in[strlen("capi:")];
-
-	/* Separate IV options if present, it can contain another '-' in hash name */
-	*ivopts = strrchr(tmp, ':');
-	if (*ivopts) {
-		**ivopts = '\0';
-		(*ivopts)++;
-	}
-	/* Parse IV mode */
-	*ivmode = strrchr(tmp, '-');
-	if (*ivmode) {
-		**ivmode = '\0';
-		(*ivmode)++;
-	}
-	/* The rest is crypto API spec */
-	cipher_api = tmp;
+	cipher_api = strsep(&tmp, "-");
+	*ivmode = strsep(&tmp, ":");
+	*ivopts = tmp;
 
 	if (*ivmode && !strcmp(*ivmode, "lmk"))
 		cc->tfms_count = 64;
@@ -2497,8 +2500,11 @@ static int crypt_ctr_cipher_old(struct dm_target *ti, char *cipher_in, char *key
 		goto bad_mem;
 
 	chainmode = strsep(&tmp, "-");
-	*ivmode = strsep(&tmp, ":");
-	*ivopts = tmp;
+	*ivopts = strsep(&tmp, "-");
+	*ivmode = strsep(&*ivopts, ":");
+
+	if (tmp)
+		DMWARN("Ignoring unexpected additional cipher options");
 
 	/*
 	 * For compatibility with the original dm-crypt mapping format, if
@@ -2921,6 +2927,10 @@ static int crypt_map(struct dm_target *ti, struct bio *bio)
 		io->ctx.r.req_aead = (struct aead_request *)(io + 1);
 	else
 		io->ctx.r.req = (struct skcipher_request *)(io + 1);
+
+#ifdef CONFIG_HUAWEI_IO_TRACING
+               trace_block_crypt_map(bio, cc->start + io->sector);
+#endif
 
 	if (bio_data_dir(io->base_bio) == READ) {
 		if (kcryptd_io_read(io, GFP_NOWAIT))

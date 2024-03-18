@@ -20,7 +20,7 @@
 #include <asm/tlbflush.h>
 #include <asm/page.h>
 #include <linux/memcontrol.h>
-
+#include <linux/hisi/rdr_hisi_ap_hook.h>
 #define CREATE_TRACE_POINTS
 #include <trace/events/kmem.h>
 
@@ -287,6 +287,11 @@ int slab_unmergeable(struct kmem_cache *s)
 	if (s->refcount < 0)
 		return 1;
 
+#ifdef CONFIG_HISI_PAGE_TRACE
+	if (s->flags & SLAB_HISI_NOTRACE)
+		return 1;
+#endif
+
 	return 0;
 }
 
@@ -309,6 +314,10 @@ struct kmem_cache *find_mergeable(size_t size, size_t align,
 	if (flags & SLAB_NEVER_MERGE)
 		return NULL;
 
+#ifdef CONFIG_HISI_PAGE_TRACE
+	if (flags & SLAB_HISI_NOTRACE)
+		return NULL;
+#endif
 	list_for_each_entry_reverse(s, &slab_root_caches, root_caches_node) {
 		if (slab_unmergeable(s))
 			continue;
@@ -1136,6 +1145,8 @@ void *kmalloc_order_trace(size_t size, gfp_t flags, unsigned int order)
 {
 	void *ret = kmalloc_order(size, flags, order);
 	trace_kmalloc(_RET_IP_, ret, size, PAGE_SIZE << order, flags);
+	kmalloc_trace_hook((unsigned char)MEM_ALLOC, _RET_IP_, (unsigned long long)ret,/*lint !e571*/
+                (unsigned long long)virt_to_phys(ret), (unsigned int)size);
 	return ret;
 }
 EXPORT_SYMBOL(kmalloc_order_trace);

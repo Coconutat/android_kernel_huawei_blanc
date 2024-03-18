@@ -13,10 +13,10 @@ config ZRAM
 	  It has several use cases, for example: /tmp storage, use as swap
 	  disks and maybe many more.
 
-	  See zram.txt for more information.
+	  See Documentation/blockdev/zram.txt for more information.
 
 config ZRAM_WRITEBACK
-       bool "Write back incompressible page to backing device"
+       bool "Write back incompressible or idle page to backing device"
        depends on ZRAM
        default n
        help
@@ -25,4 +25,31 @@ config ZRAM_WRITEBACK
 	 For this feature, admin should set up backing device via
 	 /sys/block/zramX/backing_dev.
 
-	 See zram.txt for more infomration.
+	 With /sys/block/zramX/{idle,writeback}, application could ask
+	 idle page's writeback to the backing device to save in memory.
+
+	 See Documentation/blockdev/zram.txt for more information.
+
+config ZRAM_MEMORY_TRACKING
+	bool "Track zRam block status"
+	depends on ZRAM && DEBUG_FS
+	help
+	  With this feature, admin can track the state of allocated blocks
+	  of zRAM. Admin could see the information via
+	  /sys/kernel/debug/zram/zramX/block_state.
+
+	  See Documentation/blockdev/zram.txt for more information.
+
+config ZRAM_DEDUP
+	bool "Memory deduplication"
+	depends on ZRAM
+	help
+	  With this feature, zram could deduplicate the objects with the same
+	  context. Admin could see the information via
+	  /sys/block/zramX/mm_stat.
+config ZRAM_NON_COMPRESS
+	bool "zram non compress"
+	depends on ZRAM
+	help
+	  With this feature, zram will not compress page that with NonCompress
+	  flag.

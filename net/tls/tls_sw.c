@@ -170,9 +170,6 @@ static int alloc_encrypted_sg(struct sock *sk, int len)
 	rc = alloc_sg(sk, len, ctx->sg_encrypted_data,
 		      &ctx->sg_encrypted_num_elem, &ctx->sg_encrypted_size, 0);
 
-	if (rc == -ENOSPC)
-		ctx->sg_encrypted_num_elem = ARRAY_SIZE(ctx->sg_encrypted_data);
-
 	return rc;
 }
 
@@ -185,9 +182,6 @@ static int alloc_plaintext_sg(struct sock *sk, int len)
 	rc = alloc_sg(sk, len, ctx->sg_plaintext_data,
 		      &ctx->sg_plaintext_num_elem, &ctx->sg_plaintext_size,
 		      tls_ctx->pending_open_record_frags);
-
-	if (rc == -ENOSPC)
-		ctx->sg_plaintext_num_elem = ARRAY_SIZE(ctx->sg_plaintext_data);
 
 	return rc;
 }
@@ -388,7 +382,7 @@ int tls_sw_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
 {
 	struct tls_context *tls_ctx = tls_get_ctx(sk);
 	struct tls_sw_context *ctx = tls_sw_ctx(tls_ctx);
-	int ret;
+	int ret = 0;
 	int required_size;
 	long timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
 	bool eor = !(msg->msg_flags & MSG_MORE);
@@ -403,8 +397,7 @@ int tls_sw_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
 
 	lock_sock(sk);
 
-	ret = tls_complete_pending_work(sk, tls_ctx, msg->msg_flags, &timeo);
-	if (ret)
+	if (tls_complete_pending_work(sk, tls_ctx, msg->msg_flags, &timeo))
 		goto send_end;
 
 	if (unlikely(msg->msg_controllen)) {
@@ -540,7 +533,7 @@ int tls_sw_sendpage(struct sock *sk, struct page *page,
 {
 	struct tls_context *tls_ctx = tls_get_ctx(sk);
 	struct tls_sw_context *ctx = tls_sw_ctx(tls_ctx);
-	int ret;
+	int ret = 0;
 	long timeo = sock_sndtimeo(sk, flags & MSG_DONTWAIT);
 	bool eor;
 	size_t orig_size = size;
@@ -560,8 +553,7 @@ int tls_sw_sendpage(struct sock *sk, struct page *page,
 
 	sk_clear_bit(SOCKWQ_ASYNC_NOSPACE, sk);
 
-	ret = tls_complete_pending_work(sk, tls_ctx, flags, &timeo);
-	if (ret)
+	if (tls_complete_pending_work(sk, tls_ctx, flags, &timeo))
 		goto sendpage_end;
 
 	/* Call the sk_stream functions to manage the sndbuf mem. */
@@ -648,7 +640,7 @@ sendpage_end:
 	return ret;
 }
 
-void tls_sw_free_tx_resources(struct sock *sk)
+static void tls_sw_free_resources(struct sock *sk)
 {
 	struct tls_context *tls_ctx = tls_get_ctx(sk);
 	struct tls_sw_context *ctx = tls_sw_ctx(tls_ctx);
@@ -663,6 +655,7 @@ void tls_sw_free_tx_resources(struct sock *sk)
 
 int tls_set_sw_offload(struct sock *sk, struct tls_context *ctx)
 {
+	char keyval[TLS_CIPHER_AES_GCM_128_KEY_SIZE];
 	struct tls_crypto_info *crypto_info;
 	struct tls12_crypto_info_aes_gcm_128 *gcm_128_info;
 	struct tls_sw_context *sw_ctx;
@@ -687,8 +680,9 @@ int tls_set_sw_offload(struct sock *sk, struct tls_context *ctx)
 	}
 
 	ctx->priv_ctx = (struct tls_offload_context *)sw_ctx;
+	ctx->free_resources = tls_sw_free_resources;
 
-	crypto_info = &ctx->crypto_send.info;
+	crypto_info = &ctx->crypto_send;
 	switch (crypto_info->cipher_type) {
 	case TLS_CIPHER_AES_GCM_128: {
 		nonce_size = TLS_CIPHER_AES_GCM_128_IV_SIZE;
@@ -753,7 +747,9 @@ int tls_set_sw_offload(struct sock *sk, struct tls_context *ctx)
 
 	ctx->push_pending_record = tls_sw_push_pending_record;
 
-	rc = crypto_aead_setkey(sw_ctx->aead_send, gcm_128_info->key,
+	memcpy(keyval, gcm_128_info->key, TLS_CIPHER_AES_GCM_128_KEY_SIZE);
+
+	rc = crypto_aead_setkey(sw_ctx->aead_send, keyval,
 				TLS_CIPHER_AES_GCM_128_KEY_SIZE);
 	if (rc)
 		goto free_aead;

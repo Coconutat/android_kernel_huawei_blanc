@@ -34,6 +34,11 @@
 #define DM_COOKIE_ENV_VAR_NAME "DM_COOKIE"
 #define DM_COOKIE_LENGTH 24
 
+#ifdef CONFIG_HUAWEI_IO_TRACING
+#include <trace/iotrace.h>
+DEFINE_TRACE(block_dm_request);
+#endif
+
 static const char *_name = DM_NAME;
 
 static unsigned int major = 0;
@@ -2815,6 +2820,16 @@ void dm_free_md_mempools(struct dm_md_mempools *pools)
 
 	kfree(pools);
 }
+
+#ifdef CONFIG_HUAWEI_STORAGE_ROFA
+const struct bio *dm_get_tio_bio(struct bio *bio)
+{
+	struct dm_target_io *tio =
+			container_of(bio, struct dm_target_io, clone);
+
+	return tio->io->bio;
+}
+#endif
 
 struct dm_pr {
 	u64	old_key;

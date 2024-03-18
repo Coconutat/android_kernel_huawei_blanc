@@ -3,6 +3,9 @@
 #define INT_BLK_MQ_H
 
 #include "blk-stat.h"
+#ifdef CONFIG_HISI_BLK
+#include "hisi-blk.h"
+#endif
 
 struct blk_mq_tag_set;
 
@@ -103,12 +106,20 @@ static inline struct blk_mq_ctx *blk_mq_get_ctx(struct request_queue *q)
 
 static inline void blk_mq_put_ctx(struct blk_mq_ctx *ctx)
 {
-	put_cpu();
+#ifdef CONFIG_HISI_BLK
+	if (ctx->queue->hisi_queue_ops && ctx->queue->hisi_queue_ops->mq_ctx_put_fn)
+		ctx->queue->hisi_queue_ops->mq_ctx_put_fn(ctx);
+	else
+#endif /* CONFIG_HISI_BLK */
+		put_cpu();
 }
 
 struct blk_mq_alloc_data {
 	/* input parameter */
 	struct request_queue *q;
+#ifdef CONFIG_HISI_BLK
+	unsigned long io_flag;
+#endif
 	unsigned int flags;
 	unsigned int shallow_depth;
 

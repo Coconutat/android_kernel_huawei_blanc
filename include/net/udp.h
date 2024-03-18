@@ -32,6 +32,9 @@
 #include <linux/seq_file.h>
 #include <linux/poll.h>
 
+#ifdef CONFIG_HUAWEI_BASTET
+#include <huawei_platform/net/bastet/bastet.h>
+#endif
 /**
  *	struct udp_skb_cb  -  UDP(-Lite) private variables
  *

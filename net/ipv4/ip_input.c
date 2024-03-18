@@ -148,6 +148,9 @@
 #include <linux/netlink.h>
 #include <net/dst_metadata.h>
 
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+#include  <hwnet/ipv4/wifi_delayst.h>
+#endif
 /*
  *	Process Router Attention IP option (RFC 2113)
  */
@@ -259,10 +262,11 @@ int ip_local_deliver(struct sk_buff *skb)
 		       ip_local_deliver_finish);
 }
 
-static inline bool ip_rcv_options(struct sk_buff *skb, struct net_device *dev)
+static inline bool ip_rcv_options(struct sk_buff *skb)
 {
 	struct ip_options *opt;
 	const struct iphdr *iph;
+	struct net_device *dev = skb->dev;
 
 	/* It looks as overkill, because not all
 	   IP options require packet mangling.
@@ -298,7 +302,7 @@ static inline bool ip_rcv_options(struct sk_buff *skb, struct net_device *dev)
 			}
 		}
 
-		if (ip_options_rcv_srr(skb, dev))
+		if (ip_options_rcv_srr(skb))
 			goto drop;
 	}
 
@@ -361,7 +365,7 @@ static int ip_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
 	}
 #endif
 
-	if (iph->ihl > 5 && ip_rcv_options(skb, dev))
+	if (iph->ihl > 5 && ip_rcv_options(skb))
 		goto drop;
 
 	rt = skb_rtable(skb);
@@ -490,6 +494,11 @@ int ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, 
 	/* Must drop socket now because of tproxy. */
 	skb_orphan(skb);
 
+#ifdef CONFIG_WIFI_DELAY_STATISTIC
+	if(DELAY_STATISTIC_SWITCH_ON) {
+		delay_record_ip_combine(skb,TP_SKB_DIRECT_RCV);
+	}
+#endif
 	return NF_HOOK(NFPROTO_IPV4, NF_INET_PRE_ROUTING,
 		       net, NULL, skb, dev, NULL,
 		       ip_rcv_finish);

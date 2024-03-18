@@ -92,7 +92,17 @@ struct scsi_host_template {
 	 */
 	int (* compat_ioctl)(struct scsi_device *dev, int cmd, void __user *arg);
 #endif
-
+#ifndef CONFIG_SCSI_UFS_HI1861_VCMD
+	/*
+	 * Compat handler. Handle 32bit ABI.
+	 * When unknown ioctl is passed return -ENOIOCTLCMD.
+	 *
+	 * Status: OPTIONAL
+	 */
+	int (* get_fsr_command)(struct scsi_cmnd *cmd, u8 *buf, u32 size);
+#endif
+	int (*get_tz_info)(struct scsi_device *dev, u8 *buf, u32 size);
+	int (*tz_ctrl)(struct scsi_device *dev, int desc_id, uint8_t index);
 	/*
 	 * The queuecommand function is used to queue up a scsi
 	 * command block to the LLDD.  When the driver finished
@@ -340,7 +350,10 @@ struct scsi_host_template {
 #define SCSI_ADAPTER_RESET	1
 #define SCSI_FIRMWARE_RESET	2
 
-
+#ifdef CONFIG_HISI_BLK
+	int (*direct_flush)(struct scsi_device *);
+	void (*dump_status)(struct Scsi_Host *shost, enum blk_dump_scenario dump_type);
+#endif
 	/*
 	 * Name of proc directory
 	 */
@@ -367,7 +380,7 @@ struct scsi_host_template {
 	 * ID.
 	 */
 	int this_id;
-
+	short is_emulator;
 	/*
 	 * This determines the degree to which the host adapter is capable
 	 * of scatter-gather.
@@ -538,6 +551,26 @@ enum scsi_host_state {
 	SHOST_DEL_RECOVERY,
 };
 
+enum scsi_host_queue_quirk{
+    SHOST_QUIRK_BUSY_IDLE_ENABLE = 0,
+    SHOST_QUIRK_FLUSH_REDUCING,
+    SHOST_QUIRK_UNMAP_IN_SOFTIRQ,
+    SHOST_QUIRK_DRIVER_TAG_ALLOC,
+    SHOST_QUIRK_SCSI_QUIESCE_IN_LLD,
+    SHOST_QUIRK_HISI_UFS_MQ,
+    SHOST_QUIRK_BKOPS,
+    SHOST_QUIRK_IO_LATENCY_WARNING,
+    SHOST_QUIRK_BUSY_IDLE_INTR_ENABLE,
+};
+
+#define SHOST_QUIRK(x)  (1 << x)
+
+enum hisi_dev_quirk{
+    SHOST_QUIRK_BKOPS_ENABLE = 0,
+    SHOST_QUIRK_IDLE_ENABLE,
+};
+#define SHOST_HISI_DEV_QUIRK(x) (1 << x)
+
 struct Scsi_Host {
 	/*
 	 * __devices is protected by the host_lock, but you should
@@ -619,6 +652,11 @@ struct Scsi_Host {
 	int this_id;
 	int can_queue;
 	short cmd_per_lun;
+	/* The Scsi host is run on Emulator platform, because have not actual
+	 * analogy MPHY, some feature like PM-Runtime will be cut, which are
+	 * depend on real analogy MPHY
+	 */
+	short is_emulator;
 	short unsigned int sg_tablesize;
 	short unsigned int sg_prot_tablesize;
 	unsigned int max_sectors;
@@ -631,6 +669,12 @@ struct Scsi_Host {
 	 * is nr_hw_queues * can_queue.
 	 */
 	unsigned nr_hw_queues;
+    int mq_queue_depth;
+    int mq_reserved_queue_depth;
+    int mq_high_prio_queue_depth;
+    unsigned long queue_quirk_flag;
+    unsigned long hisi_dev_quirk_flag;
+
 	/* 
 	 * Used to assign serial numbers to the cmds.
 	 * Protected by the host lock.
@@ -665,6 +709,18 @@ struct Scsi_Host {
 
 	/* The controller does not support WRITE SAME */
 	unsigned no_write_same:1;
+
+    /*
+     * Set "SELECT REPORT" field to allow detection of well known logical
+     * units along with standard LUs.
+     */
+    unsigned report_wlus:1;
+
+    /*
+     * Set "DBD" field in mode_sense caching mode page in case it is
+     * mandatory by LLD standard.
+     */
+    unsigned set_dbd_for_caching:1;
 
 	unsigned use_blk_mq:1;
 	unsigned use_cmd_list:1;
@@ -729,6 +785,9 @@ struct Scsi_Host {
 	 */
 	struct device *dma_dev;
 
+#ifdef CONFIG_SCSI_UFS_INLINE_CRYPTO
+	int crypto_enabled;
+#endif
 	/*
 	 * We should ensure that this is aligned, both for better performance
 	 * and also because some compilers (m68k) don't automatically force

@@ -21,6 +21,7 @@
 #include <linux/sched/task_stack.h>
 #include <linux/thread_info.h>
 #include <asm/sections.h>
+#include <chipset_common/security/saudit.h>
 
 /*
  * Checks if a given pointer and length is contained by the current
@@ -58,12 +59,17 @@ static noinline int check_stack_object(const void *obj, unsigned long len)
 	return GOOD_STACK;
 }
 
-static void report_usercopy(const void *ptr, unsigned long len,
-			    bool to_user, const char *type)
+static void report_usercopy(unsigned long len, bool to_user, const char *type)
 {
-	pr_emerg("kernel memory %s attempt detected %s %p (%s) (%lu bytes)\n",
+	pr_emerg("kernel memory %s attempt detected %s '%s' (%lu bytes)\n",
 		to_user ? "exposure" : "overwrite",
-		to_user ? "from" : "to", ptr, type ? : "unknown", len);
+		to_user ? "from" : "to", type ? : "unknown", len);
+
+	saudit_log(USERCOPY, STP_RISK, 0,
+		"msg=kernel memory %s attempt detected %s '%s' (%lu bytes),",
+		to_user ? "exposure" : "overwrite",
+		to_user ? "from" : "to", type ? : "unknown", len);
+
 	/*
 	 * For greater effect, it would be nice to do do_group_exit(),
 	 * but BUG() actually hooks all the lock-breaking and per-arch
@@ -232,6 +238,32 @@ void __check_object_size(const void *ptr, unsigned long n, bool to_user)
 	if (err)
 		goto report;
 
+#if !defined(CONFIG_HARDENED_USERCOPY_PAGESPAN) && \
+	!defined(CONFIG_ARCH_THREAD_STACK_ALLOCATOR) && \
+	(THREAD_SIZE >= PAGE_SIZE || defined(CONFIG_VMAP_STACK))
+	/* Check for bad stack object. */
+	switch (check_stack_object(ptr, n)) {
+	case NOT_STACK:
+		/* Object is not touching the current process stack. */
+		break;
+	case GOOD_FRAME:
+	case GOOD_STACK:
+		/*
+		 * Object is either in the correct frame (when it
+		 * is possible to check) or just generally on the
+		 * process stack (when frame checking not available).
+		 */
+		return;
+	default:
+		err = "<process stack>";
+		goto report;
+	}
+
+	/* Check for bad heap object. */
+	err = check_heap_object(ptr, n, to_user);
+	if (err)
+		goto report;
+#else
 	/* Check for bad heap object. */
 	err = check_heap_object(ptr, n, to_user);
 	if (err)
@@ -254,6 +286,7 @@ void __check_object_size(const void *ptr, unsigned long n, bool to_user)
 		err = "<process stack>";
 		goto report;
 	}
+#endif
 
 	/* Check for object in kernel to avoid text exposure. */
 	err = check_kernel_text_object(ptr, n);
@@ -261,6 +294,6 @@ void __check_object_size(const void *ptr, unsigned long n, bool to_user)
 		return;
 
 report:
-	report_usercopy(ptr, n, to_user, err);
+	report_usercopy(n, to_user, err);
 }
 EXPORT_SYMBOL(__check_object_size);

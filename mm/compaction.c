@@ -22,6 +22,7 @@
 #include <linux/kthread.h>
 #include <linux/freezer.h>
 #include <linux/page_owner.h>
+#include <linux/psi.h>
 #include "internal.h"
 
 #ifdef CONFIG_COMPACTION
@@ -853,8 +854,12 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
 
 		/* Successfully isolated */
 		del_page_from_lru_list(page, lruvec, page_lru(page));
+#ifdef CONFIG_ISOLATE_COUNT
+		inc_node_page_state(page, NR_ISOLATED_ANON);
+#else
 		inc_node_page_state(page,
 				NR_ISOLATED_ANON + page_is_file_cache(page));
+#endif
 
 isolate_success:
 		list_add(&page->lru, &cc->migratepages);
@@ -1340,7 +1345,7 @@ static enum compact_result __compact_finished(struct zone *zone,
 
 #ifdef CONFIG_CMA
 		/* MIGRATE_MOVABLE can fallback on MIGRATE_CMA */
-		if (migratetype == MIGRATE_MOVABLE &&
+		if (cc->gfp_mask & ___GFP_CMA &&
 			!list_empty(&area->free_list[MIGRATE_CMA]))
 			return COMPACT_SUCCESS;
 #endif
@@ -1349,7 +1354,7 @@ static enum compact_result __compact_finished(struct zone *zone,
 		 * other migratetype buddy lists.
 		 */
 		if (find_suitable_fallback(area, order, migratetype,
-						true, &can_steal) != -1) {
+						true, &can_steal, cc->gfp_mask) != -1) {
 
 			/* movable pages are OK in any pageblock */
 			if (migratetype == MIGRATE_MOVABLE)
@@ -1836,6 +1841,55 @@ static void compact_nodes(void)
 		compact_node(nid);
 }
 
+#ifdef CONFIG_ION_HISI_CPA
+/* Compact all zones within a node for cpa async*/
+static void cpa_compact_node(int nid)
+{
+	pg_data_t *pgdat = NODE_DATA(nid);
+	struct zone *zone;
+	int zoneid;
+	struct compact_control cc = {
+		.order = -1,
+		.mode = MIGRATE_ASYNC,
+		.ignore_skip_hint = true,
+		.whole_zone = true,
+	};
+
+	for (zoneid = 0; zoneid < MAX_NR_ZONES; zoneid++) {
+
+		zone = &pgdat->node_zones[zoneid];
+		if (!populated_zone(zone))
+			continue;
+
+		cc.zone = zone;
+		cc.nr_migratepages = 0;
+		cc.nr_freepages = 0;
+		INIT_LIST_HEAD(&cc.migratepages);
+		INIT_LIST_HEAD(&cc.freepages);
+
+		compact_zone(zone, &cc);
+
+		VM_BUG_ON(!list_empty(&cc.freepages));
+		VM_BUG_ON(!list_empty(&cc.migratepages));
+	}
+}
+
+/* Compact all nodes in the system for cpa */
+void cpa_compact_nodes(int compact_model)
+{
+	int nid;
+
+	/* Flush pending updates to the LRU lists */
+	lru_add_drain_all();
+
+	for_each_online_node(nid)
+		if (compact_model)
+			compact_node(nid);
+		else
+			cpa_compact_node(nid);
+}
+#endif
+
 /* The written value is actually unused, all memory is compacted */
 int sysctl_compact_memory;
 
@@ -2038,11 +2092,15 @@ static int kcompactd(void *p)
 	pgdat->kcompactd_classzone_idx = pgdat->nr_zones - 1;
 
 	while (!kthread_should_stop()) {
+		unsigned long pflags;
+
 		trace_mm_compaction_kcompactd_sleep(pgdat->node_id);
 		wait_event_freezable(pgdat->kcompactd_wait,
 				kcompactd_work_requested(pgdat));
 
+		psi_memstall_enter(&pflags);
 		kcompactd_do_work(pgdat);
+		psi_memstall_leave(&pflags);
 	}
 
 	return 0;

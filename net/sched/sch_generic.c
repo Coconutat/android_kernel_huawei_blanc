@@ -31,6 +31,10 @@
 #include <net/dst.h>
 #include <trace/events/qdisc.h>
 
+#ifdef CONFIG_HW_NETQOS_SCHED
+#include <netqos_sched/netqos_sched.h>
+#endif
+
 /* Qdisc to use by default */
 const struct Qdisc_ops *default_qdisc_ops = &pfifo_fast_ops;
 EXPORT_SYMBOL(default_qdisc_ops);
@@ -492,6 +496,11 @@ static int pfifo_fast_enqueue(struct sk_buff *skb, struct Qdisc *qdisc,
 {
 	if (qdisc->q.qlen < qdisc_dev(qdisc)->tx_queue_len) {
 		int band = prio2band[skb->priority & TC_PRIO_MAX];
+
+#ifdef CONFIG_HW_NETQOS_SCHED
+	if (band > 0)
+		band = netqos_qdisc_band(skb, band);
+#endif
 		struct pfifo_fast_priv *priv = qdisc_priv(qdisc);
 		struct qdisc_skb_head *list = band2list(priv, band);
 

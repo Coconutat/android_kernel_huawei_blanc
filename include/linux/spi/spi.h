@@ -579,6 +579,9 @@ struct spi_controller {
 	void			*dummy_tx;
 
 	int (*fw_translate_cs)(struct spi_controller *ctlr, unsigned cs);
+#if defined CONFIG_HISI_SPI
+	struct mutex		msg_mutex;
+#endif
 };
 
 static inline void *spi_controller_get_devdata(struct spi_controller *ctlr)
@@ -1378,4 +1381,9 @@ spi_transfer_is_last(struct spi_controller *ctlr, struct spi_transfer *xfer)
 	devm_spi_register_controller(_dev, _ctlr)
 #define spi_unregister_master(_ctlr)	spi_unregister_controller(_ctlr)
 
+#if defined CONFIG_HISI_SPI
+void disable_spi(struct spi_controller *ctlr);
+int pl022_runtime_suspend(struct device *dev);
+int pl022_runtime_resume(struct device *dev);
+#endif
 #endif /* __LINUX_SPI_H */

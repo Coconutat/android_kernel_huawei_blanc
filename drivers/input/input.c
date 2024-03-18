@@ -33,6 +33,7 @@ MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
 MODULE_DESCRIPTION("Input core");
 MODULE_LICENSE("GPL");
 
+#define KEY_GAME_SPACE	199
 #define INPUT_MAX_CHAR_DEVICES		1024
 #define INPUT_FIRST_DYNAMIC_DEV		256
 static DEFINE_IDA(input_ida);
@@ -686,6 +687,10 @@ static void input_dev_release_keys(struct input_dev *dev)
 
 	if (is_event_supported(EV_KEY, dev->evbit, EV_MAX)) {
 		for_each_set_bit(code, dev->key, KEY_CNT) {
+			if (code == KEY_GAME_SPACE) {
+				pr_info("GAME_SPACE switch donot need release\n");
+				continue;
+			}
 			input_pass_event(dev, EV_KEY, code, 0);
 			need_sync = true;
 		}

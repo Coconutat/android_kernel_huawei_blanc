@@ -32,7 +32,7 @@ static int ovl_check_redirect(struct dentry *dentry, struct ovl_lookup_data *d,
 	int res;
 	char *s, *next, *buf = NULL;
 
-	res = vfs_getxattr(dentry, OVL_XATTR_REDIRECT, NULL, 0);
+	res = vfs_getxattr(NULL, dentry, OVL_XATTR_REDIRECT, NULL, 0);
 	if (res < 0) {
 		if (res == -ENODATA || res == -EOPNOTSUPP)
 			return 0;
@@ -45,7 +45,7 @@ static int ovl_check_redirect(struct dentry *dentry, struct ovl_lookup_data *d,
 	if (res == 0)
 		goto invalid;
 
-	res = vfs_getxattr(dentry, OVL_XATTR_REDIRECT, buf, res);
+	res = vfs_getxattr(NULL, dentry, OVL_XATTR_REDIRECT, buf, res);
 	if (res < 0)
 		goto fail;
 	if (res == 0)
@@ -102,7 +102,7 @@ static struct ovl_fh *ovl_get_origin_fh(struct dentry *dentry)
 	int res;
 	struct ovl_fh *fh = NULL;
 
-	res = vfs_getxattr(dentry, OVL_XATTR_ORIGIN, NULL, 0);
+	res = vfs_getxattr(NULL, dentry, OVL_XATTR_ORIGIN, NULL, 0);
 	if (res < 0) {
 		if (res == -ENODATA || res == -EOPNOTSUPP)
 			return NULL;
@@ -116,7 +116,7 @@ static struct ovl_fh *ovl_get_origin_fh(struct dentry *dentry)
 	if (!fh)
 		return ERR_PTR(-ENOMEM);
 
-	res = vfs_getxattr(dentry, OVL_XATTR_ORIGIN, fh, res);
+	res = vfs_getxattr(NULL, dentry, OVL_XATTR_ORIGIN, fh, res);
 	if (res < 0)
 		goto fail;
 
@@ -730,7 +730,7 @@ struct dentry *ovl_lookup(struct inode *dir, struct dentry *dentry,
 			ovl_set_flag(OVL_INDEX, inode);
 	}
 
-	revert_creds(old_cred);
+	ovl_revert_creds(old_cred);
 	dput(index);
 	kfree(stack);
 	kfree(d.redirect);
@@ -751,7 +751,7 @@ out_put_upper:
 	kfree(upperredirect);
 out:
 	kfree(d.redirect);
-	revert_creds(old_cred);
+	ovl_revert_creds(old_cred);
 	return ERR_PTR(err);
 }
 

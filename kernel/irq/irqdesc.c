@@ -19,6 +19,11 @@
 
 #include "internals.h"
 
+#ifdef CONFIG_HISI_BB
+#include <linux/hisi/rdr_hisi_ap_hook.h>
+#include <linux/hisi/rdr_hisi_platform.h>
+#endif
+
 /*
  * lockdep: we want to handle all irq_desc locks as a single lock-class:
  */
@@ -119,7 +124,6 @@ static void desc_set_defaults(unsigned int irq, struct irq_desc *desc, int node,
 	desc->depth = 1;
 	desc->irq_count = 0;
 	desc->irqs_unhandled = 0;
-	desc->tot_count = 0;
 	desc->name = NULL;
 	desc->owner = owner;
 	for_each_possible_cpu(cpu)
@@ -627,6 +631,10 @@ int __handle_domain_irq(struct irq_domain *domain, unsigned int hwirq,
 	int ret = 0;
 
 	irq_enter();
+#ifdef CONFIG_HISI_BB
+	irq_trace_hook(0, 0, hwirq);
+	irq_register_hook(old_regs);
+#endif
 
 #ifdef CONFIG_IRQ_DOMAIN
 	if (lookup)
@@ -643,7 +651,9 @@ int __handle_domain_irq(struct irq_domain *domain, unsigned int hwirq,
 	} else {
 		generic_handle_irq(irq);
 	}
-
+#ifdef CONFIG_HISI_BB
+	irq_trace_hook(1, 0, hwirq);
+#endif
 	irq_exit();
 	set_irq_regs(old_regs);
 	return ret;
@@ -897,15 +907,11 @@ unsigned int kstat_irqs_cpu(unsigned int irq, int cpu)
 unsigned int kstat_irqs(unsigned int irq)
 {
 	struct irq_desc *desc = irq_to_desc(irq);
-	unsigned int sum = 0;
 	int cpu;
+	unsigned int sum = 0;
 
 	if (!desc || !desc->kstat_irqs)
 		return 0;
-	if (!irq_settings_is_per_cpu_devid(desc) &&
-	    !irq_settings_is_per_cpu(desc))
-	    return desc->tot_count;
-
 	for_each_possible_cpu(cpu)
 		sum += *per_cpu_ptr(desc->kstat_irqs, cpu);
 	return sum;

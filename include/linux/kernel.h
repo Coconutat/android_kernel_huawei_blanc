@@ -63,6 +63,10 @@
 /* generic data direction definitions */
 #define READ			0
 #define WRITE			1
+#ifdef CONFIG_BLK_DEV_THROTTLING
+#define READ_FG			2
+#define WRITE_FG		3
+#endif
 
 /**
  * ARRAY_SIZE - get the number of elements in array @arr
@@ -441,6 +445,10 @@ extern long long simple_strtoll(const char *,char **,unsigned int);
 
 extern int num_to_str(char *buf, int size, unsigned long long num);
 
+#define strict_strtoul      kstrtoul
+#define strict_strtol       kstrtol
+#define strict_strtoull     kstrtoull
+#define strict_strtoll      kstrtoll
 /* lib/printf utilities */
 
 extern __printf(2, 3) int sprintf(char *buf, const char * fmt, ...);

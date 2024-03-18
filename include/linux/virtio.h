@@ -32,6 +32,9 @@ struct virtqueue {
 	struct virtio_device *vdev;
 	unsigned int index;
 	unsigned int num_free;
+#ifdef CONFIG_HISI_REMOTEPROC
+	dma_addr_t dma_base;
+#endif
 	void *priv;
 };
 

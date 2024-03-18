@@ -149,16 +149,53 @@ static inline void blk_clear_rq_complete(struct request *rq)
 
 void blk_insert_flush(struct request *rq);
 
+/*
+ * get_req_from_fg_bg_list - get request from fg list or bg list
+ * @q: the request queue which getting request from
+ *
+ * First get request from the fg list. If there are too many fg requests
+ * in the hardware queue (not less than max_depth - 2), or there's no
+ * request in the fg list, fall through to get request from the bg list.
+ * Besides, make sure there's not too many bg requests in the queue.
+ */
+static inline struct request *get_req_from_fg_bg_list(struct request_queue *q)
+{
+	struct request *rq = NULL;
+
+	if ((q->in_flight[BLK_RW_FG] + BLK_MIN_BG_DEPTH) < q->queue_tags->max_depth ||
+	     list_empty(&q->bg_head))
+		if (!list_empty(&q->fg_head))
+			rq = list_entry(q->fg_head.next,
+					struct request, fg_bg_list);
+
+	if (!rq && q->in_flight[BLK_RW_BG] < q->queue_tags->max_bg_depth)
+		rq = list_entry(q->bg_head.next,
+				struct request, fg_bg_list);
+
+	return rq;
+}
+
 static inline struct request *__elv_next_request(struct request_queue *q)
 {
-	struct request *rq;
+	struct request *rq = NULL;
 	struct blk_flush_queue *fq = blk_get_flush_queue(q, NULL);
 
 	WARN_ON_ONCE(q->mq_ops);
 
 	while (1) {
 		if (!list_empty(&q->queue_head)) {
-			rq = list_entry_rq(q->queue_head.next);
+#ifdef CONFIG_BLK_DEV_HI_PRIO_FOR_FG
+			struct blk_queue_tag *bqt = NULL;
+
+			if (blk_queue_tagged(q))
+				bqt = q->queue_tags;
+
+			if (bqt && bqt->max_bg_depth > 0 &&
+			    bqt->max_depth >= BLK_MIN_DEPTH_ON)
+				rq = get_req_from_fg_bg_list(q);
+			else
+#endif
+				rq = list_entry_rq(q->queue_head.next);
 			return rq;
 		}
 

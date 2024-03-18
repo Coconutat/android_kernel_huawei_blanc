@@ -79,17 +79,13 @@ enum {
 	TLS_PENDING_CLOSED_RECORD
 };
 
-union tls_crypto_context {
-	struct tls_crypto_info info;
-	struct tls12_crypto_info_aes_gcm_128 aes_gcm_128;
-};
-
 struct tls_context {
-	union tls_crypto_context crypto_send;
+	union {
+		struct tls_crypto_info crypto_send;
+		struct tls12_crypto_info_aes_gcm_128 crypto_send_aes_gcm_128;
+	};
 
 	void *priv_ctx;
-
-	u8 tx_conf:2;
 
 	u16 prepend_size;
 	u16 tag_size;
@@ -106,6 +102,7 @@ struct tls_context {
 
 	u16 pending_open_record_frags;
 	int (*push_pending_record)(struct sock *sk, int flags);
+	void (*free_resources)(struct sock *sk);
 
 	void (*sk_write_space)(struct sock *sk);
 	void (*sk_proto_close)(struct sock *sk, long timeout);
@@ -130,7 +127,6 @@ int tls_sw_sendmsg(struct sock *sk, struct msghdr *msg, size_t size);
 int tls_sw_sendpage(struct sock *sk, struct page *page,
 		    int offset, size_t size, int flags);
 void tls_sw_close(struct sock *sk, long timeout);
-void tls_sw_free_tx_resources(struct sock *sk);
 
 void tls_sk_destruct(struct sock *sk, struct tls_context *ctx);
 void tls_icsk_clean_acked(struct sock *sk);
@@ -212,8 +208,8 @@ static inline void tls_fill_prepend(struct tls_context *ctx,
 	 * size KTLS_DTLS_HEADER_SIZE + KTLS_DTLS_NONCE_EXPLICIT_SIZE
 	 */
 	buf[0] = record_type;
-	buf[1] = TLS_VERSION_MINOR(ctx->crypto_send.info.version);
-	buf[2] = TLS_VERSION_MAJOR(ctx->crypto_send.info.version);
+	buf[1] = TLS_VERSION_MINOR(ctx->crypto_send.version);
+	buf[2] = TLS_VERSION_MAJOR(ctx->crypto_send.version);
 	/* we can use IV for nonce explicit according to spec */
 	buf[3] = pkt_len >> 8;
 	buf[4] = pkt_len & 0xFF;

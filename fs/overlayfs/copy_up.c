@@ -96,9 +96,9 @@ int ovl_copy_xattr(struct dentry *old, struct dentry *new)
 		if (ovl_is_private_xattr(name))
 			continue;
 retry:
-		size = vfs_getxattr(old, name, value, value_size);
+		size = vfs_getxattr(NULL, old, name, value, value_size);
 		if (size == -ERANGE)
-			size = vfs_getxattr(old, name, NULL, 0);
+			size = vfs_getxattr(NULL, old, name, NULL, 0);
 
 		if (size < 0) {
 			error = size;
@@ -125,7 +125,7 @@ retry:
 			error = 0;
 			continue; /* Discard */
 		}
-		error = vfs_setxattr(new, name, value, size, 0);
+		error = vfs_setxattr(NULL, new, name, value, size, 0);
 		if (error)
 			break;
 	}
@@ -687,7 +687,7 @@ int ovl_copy_up_flags(struct dentry *dentry, int flags)
 		dput(parent);
 		dput(next);
 	}
-	revert_creds(old_cred);
+	ovl_revert_creds(old_cred);
 
 	return err;
 }

@@ -1307,6 +1307,8 @@ int iommu_attach_device(struct iommu_domain *domain, struct device *dev)
 	 * Lock the group to make sure the device-count doesn't
 	 * change while we are attaching
 	 */
+        if (group == NULL)
+		return __iommu_attach_device(domain, dev);
 	mutex_lock(&group->mutex);
 	ret = -EINVAL;
 	if (iommu_group_device_count(group) != 1)
@@ -1341,7 +1343,8 @@ void iommu_detach_device(struct iommu_domain *domain, struct device *dev)
 	struct iommu_group *group;
 
 	group = iommu_group_get(dev);
-
+	if (group == NULL)
+		return __iommu_detach_device(domain, dev);
 	mutex_lock(&group->mutex);
 	if (iommu_group_device_count(group) != 1) {
 		WARN_ON(1);
@@ -1587,12 +1590,11 @@ static size_t __iommu_unmap(struct iommu_domain *domain,
 		return -EINVAL;
 	}
 
-	pr_debug("unmap this: iova 0x%lx size 0x%zx\n", iova, size);
-
 	/*
 	 * Keep iterating until we either unmap 'size' bytes (or more)
 	 * or we hit an area that isn't mapped.
 	 */
+#ifdef CONFIG_ARM_SMMU_V3
 	while (unmapped < size) {
 		size_t pgsize = iommu_pgsize(domain, iova, size - unmapped);
 
@@ -1609,6 +1611,24 @@ static size_t __iommu_unmap(struct iommu_domain *domain,
 		iova += unmapped_page;
 		unmapped += unmapped_page;
 	}
+#else
+	while (unmapped < size) {
+		size_t left = size - unmapped;
+
+		unmapped_page = ops->unmap(domain, iova, left);
+		if (!unmapped_page)
+			break;
+
+		if (sync && ops->iotlb_range_add)
+			ops->iotlb_range_add(domain, iova, left);
+
+		pr_debug("unmapped: iova 0x%lx size 0x%zx\n",
+			 iova, unmapped_page);
+
+		iova += unmapped_page;
+		unmapped += unmapped_page;
+	}
+#endif
 
 	if (sync && ops->iotlb_sync)
 		ops->iotlb_sync(domain);

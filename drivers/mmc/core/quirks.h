@@ -13,7 +13,7 @@
 #include <linux/mmc/sdio_ids.h>
 
 #include "card.h"
-
+/*lint -e501*/
 static const struct mmc_fixup mmc_blk_fixups[] = {
 #define INAND_CMD38_ARG_EXT_CSD  113
 #define INAND_CMD38_ARG_ERASE    0x00
@@ -32,6 +32,28 @@ static const struct mmc_fixup mmc_blk_fixups[] = {
 		  MMC_QUIRK_INAND_CMD38),
 	MMC_FIXUP("SEM32G", CID_MANFID_SANDISK, 0x100, add_quirk,
 		  MMC_QUIRK_INAND_CMD38),
+
+	MMC_FIXUP("S0J9B7", CID_MANFID_MICRON, CID_OEMID_ANY,
+		  add_quirk_mmc, MMC_QUIRK_DISABLE_PON),
+	MMC_FIXUP("S0J38Y", CID_MANFID_MICRON, CID_OEMID_ANY,
+		  add_quirk_mmc, MMC_QUIRK_DISABLE_PON),
+	MMC_FIXUP("S0J9F8", CID_MANFID_MICRON, CID_OEMID_ANY,
+		  add_quirk_mmc, MMC_QUIRK_DISABLE_PON),
+	MMC_FIXUP("S0J9A7", CID_MANFID_MICRON, CID_OEMID_ANY,
+		  add_quirk_mmc, MMC_QUIRK_DISABLE_PON),
+	MMC_FIXUP("S0J9D8", CID_MANFID_MICRON, CID_OEMID_ANY,
+		  add_quirk_mmc, MMC_QUIRK_DISABLE_PON),
+
+	MMC_FIXUP("S0J9B7", CID_MANFID_MICRON, CID_OEMID_ANY,
+		  add_quirk_mmc, MMC_QUIRK_CANCEL_CMD7_CMD5_IN_SR),
+	MMC_FIXUP("S0J38Y", CID_MANFID_MICRON, CID_OEMID_ANY,
+		  add_quirk_mmc, MMC_QUIRK_CANCEL_CMD7_CMD5_IN_SR),
+	MMC_FIXUP("S0J9F8", CID_MANFID_MICRON, CID_OEMID_ANY,
+		  add_quirk_mmc, MMC_QUIRK_CANCEL_CMD7_CMD5_IN_SR),
+	MMC_FIXUP("S0J9A7", CID_MANFID_MICRON, CID_OEMID_ANY,
+		  add_quirk_mmc, MMC_QUIRK_CANCEL_CMD7_CMD5_IN_SR),
+	MMC_FIXUP("S0J9D8", CID_MANFID_MICRON, CID_OEMID_ANY,
+		  add_quirk_mmc, MMC_QUIRK_CANCEL_CMD7_CMD5_IN_SR),
 
 	/*
 	 * Some MMC cards experience performance degradation with CMD23
@@ -98,10 +120,25 @@ static const struct mmc_fixup mmc_blk_fixups[] = {
 		  MMC_QUIRK_TRIM_BROKEN),
 	MMC_FIXUP("V10016", CID_MANFID_KINGSTON, CID_OEMID_ANY, add_quirk_mmc,
 		  MMC_QUIRK_TRIM_BROKEN),
-
+#ifdef CONFIG_HISI_MMC_FLUSH_REDUCE_WHITE_LIST
+        MMC_FIXUP("Q3J97V", CID_MANFID_MICRON, CID_OEMID_ANY, en_emmc_flush_reduce,
+                  0),
+        MMC_FIXUP("HAG4a2", CID_MANFID_HYNIX, CID_OEMID_ANY, en_emmc_flush_reduce,
+                  0),
+        MMC_FIXUP("HDG8a4", CID_MANFID_HYNIX, CID_OEMID_ANY, en_emmc_flush_reduce,
+                  0),
+        MMC_FIXUP("HCG4a2", CID_MANFID_HYNIX, CID_OEMID_ANY, en_emmc_flush_reduce,
+                  0),
+        MMC_FIXUP("DF4064", CID_MANFID_SANDISK_V2, CID_OEMID_ANY, en_emmc_flush_reduce,
+                  0),
+        MMC_FIXUP("064G30", CID_MANFID_TOSHIBA, CID_OEMID_ANY, en_emmc_flush_reduce,
+                  0),
+        MMC_FIXUP("128G32", CID_MANFID_TOSHIBA, CID_OEMID_ANY, en_emmc_flush_reduce,
+                  0),
+#endif
 	END_FIXUP
 };
-
+/*lint +e501*/
 static const struct mmc_fixup mmc_ext_csd_fixups[] = {
 	/*
 	 * Certain Hynix eMMC 4.41 cards might get broken when HPI feature

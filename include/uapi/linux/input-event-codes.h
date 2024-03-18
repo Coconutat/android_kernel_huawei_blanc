@@ -273,7 +273,9 @@
 #define KEY_F22			192
 #define KEY_F23			193
 #define KEY_F24			194
+#define KEY_F25			195
 
+#define KEY_GAME_SPACE		199 /* game space key for RSN */
 #define KEY_PLAYCD		200
 #define KEY_PAUSECD		201
 #define KEY_PROG3		202
@@ -741,15 +743,6 @@
 #define ABS_VOLUME		0x20
 
 #define ABS_MISC		0x28
-
-/*
- * 0x2e is reserved and should not be used in input drivers.
- * It was used by HID as ABS_MISC+6 and userspace needs to detect if
- * the next ABS_* event is correct or is just ABS_MISC + n.
- * We define here ABS_RESERVED so userspace can rely on it and detect
- * the situation described above.
- */
-#define ABS_RESERVED		0x2e
 
 #define ABS_MT_SLOT		0x2f	/* MT slot being modified */
 #define ABS_MT_TOUCH_MAJOR	0x30	/* Major axis of touching ellipse */

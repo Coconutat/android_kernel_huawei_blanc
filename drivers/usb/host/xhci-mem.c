@@ -1090,7 +1090,7 @@ static u32 xhci_find_real_port_number(struct xhci_hcd *xhci,
 			top_dev = top_dev->parent)
 		/* Found device below root hub */;
 
-	return	xhci_find_raw_port_number(hcd, top_dev->portnum);
+	return	xhci_find_raw_port_number(hcd, top_dev->portnum);  /*[false alarm]: it is a false alarm*/
 }
 
 /* Setup an xHCI virtual device for a Set Address command */
@@ -1366,7 +1366,7 @@ static u32 xhci_get_endpoint_max_burst(struct usb_device *udev,
 	if (udev->speed == USB_SPEED_HIGH &&
 	    (usb_endpoint_xfer_isoc(&ep->desc) ||
 	     usb_endpoint_xfer_int(&ep->desc)))
-		return usb_endpoint_maxp_mult(&ep->desc) - 1;
+		return usb_endpoint_maxp_mult(&ep->desc) - 1;  /*[false alarm]: it is a false alarm*/
 
 	return 0;
 }
@@ -1381,11 +1381,11 @@ static u32 xhci_get_endpoint_type(struct usb_host_endpoint *ep)
 	case USB_ENDPOINT_XFER_CONTROL:
 		return CTRL_EP;
 	case USB_ENDPOINT_XFER_BULK:
-		return in ? BULK_IN_EP : BULK_OUT_EP;
+		return in ? BULK_IN_EP : BULK_OUT_EP;  /*[false alarm]: it is a false alarm*/
 	case USB_ENDPOINT_XFER_ISOC:
-		return in ? ISOC_IN_EP : ISOC_OUT_EP;
+		return in ? ISOC_IN_EP : ISOC_OUT_EP;  /*[false alarm]: it is a false alarm*/
 	case USB_ENDPOINT_XFER_INT:
-		return in ? INT_IN_EP : INT_OUT_EP;
+		return in ? INT_IN_EP : INT_OUT_EP;  /*[false alarm]: it is a false alarm*/
 	}
 	return 0;
 }
@@ -1416,7 +1416,7 @@ static u32 xhci_get_max_esit_payload(struct usb_device *udev,
 	max_packet = usb_endpoint_maxp(&ep->desc);
 	max_burst = usb_endpoint_maxp_mult(&ep->desc);
 	/* A 0 in max burst means 1 transfer per ESIT */
-	return max_packet * max_burst;
+	return max_packet * max_burst;  /*[false alarm]: it is a false alarm*/
 }
 
 /* Set up an endpoint with one ring segment.  Do not allocate stream rings.
@@ -2151,6 +2151,11 @@ static void xhci_add_in_port(struct xhci_hcd *xhci, unsigned int num_ports,
 			xhci->hw_lpm_support = 1;
 		}
 	}
+
+#ifdef CONFIG_USB_DWC3_NYET_ABNORMAL
+	if (xhci->quirks & XHCI_DISABLE_LPM)
+		xhci->sw_lpm_support = 0;
+#endif
 
 	port_offset--;
 	for (i = port_offset; i < (port_offset + port_count); i++) {

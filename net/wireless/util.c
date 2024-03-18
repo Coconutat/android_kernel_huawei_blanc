@@ -17,7 +17,9 @@
 #include <linux/gcd.h>
 #include "core.h"
 #include "rdev-ops.h"
-
+#if (defined (CONFIG_HW_VOWIFI) || defined (CONFIG_HW_ABS) || defined(CONFIG_HW_WIFI_MSS) || defined(CONFIG_HW_WIFI_RSSI))
+#include "nl80211.h"
+#endif
 
 struct ieee80211_rate *
 ieee80211_get_response_rate(struct ieee80211_supported_band *sband,
@@ -81,6 +83,8 @@ int ieee80211_channel_to_frequency(int chan, enum nl80211_band band)
 			return 2407 + chan * 5;
 		break;
 	case NL80211_BAND_5GHZ:
+		if (chan >= 0x7fff) /*0x7fff is max int value for 16 bit*/
+			return 0;
 		if (chan >= 182 && chan <= 196)
 			return 4000 + chan * 5;
 		else
@@ -964,6 +968,32 @@ void cfg80211_process_wdev_events(struct wireless_dev *wdev)
 		case EVENT_STOPPED:
 			__cfg80211_leave(wiphy_to_rdev(wdev->wiphy), wdev);
 			break;
+#ifdef CONFIG_HW_VOWIFI
+		case EVENT_DRV_VOWIFI:
+			cfg80211_do_drv_private(wdev->netdev, GFP_KERNEL, NL80211_CMD_VOWIFI);
+			break;
+#endif
+#ifdef CONFIG_HW_ABS
+		case EVENT_DRV_ANT:
+			cfg80211_do_drv_private(wdev->netdev, GFP_KERNEL, NL80211_CMD_ANT);
+			break;
+#endif
+#ifdef CONFIG_HW_WIFI_MSS
+		case EVENT_DRV_MSS:
+#define VDR_MSS_SYNC_REPORT (300)
+			cfg80211_do_drv_private_params(wdev->netdev, GFP_KERNEL, NL80211_CMD_VDR_COMMON,
+                        VDR_MSS_SYNC_REPORT, ev->dc.ie, ev->dc.ie_len);
+			break;
+#endif
+#ifdef CONFIG_HW_WIFI_RSSI
+        case EVENT_DRV_TAS_RSSI:
+#define VDR_TAS_RSSI_REPORT (301)
+            cfg80211_do_drv_private_params(wdev->netdev, GFP_KERNEL, NL80211_CMD_VDR_COMMON,
+                        VDR_TAS_RSSI_REPORT, ev->dc.ie, ev->dc.ie_len);
+            break;
+#endif
+        case EVENT_DRV_LAST:
+            break;
 		}
 		wdev_unlock(wdev);
 

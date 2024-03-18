@@ -15,6 +15,15 @@ obj-$(CONFIG_PCIE_QCOM) += pcie-qcom.o
 obj-$(CONFIG_PCIE_ARMADA_8K) += pcie-armada8k.o
 obj-$(CONFIG_PCIE_ARTPEC6) += pcie-artpec6.o
 obj-$(CONFIG_PCIE_KIRIN) += pcie-kirin.o
+obj-$(CONFIG_PCIE_KIRIN) += pcie-kirin-common.o
+obj-$(CONFIG_PCIE_KIRIN_MNTN) += pcie-mntn.o
+obj-$(CONFIG_KIRIN_PCIE_TEST) += pcie-kirin-test.o
+obj-$(CONFIG_PCIE_KIRIN_SLT) += pcie-slt.o
+obj-$(CONFIG_KIRIN_PCIE_JAN) += pcie-Jan.o
+obj-$(CONFIG_KIRIN_PCIE_FEB) += pcie-Feb.o
+obj-$(CONFIG_KIRIN_PCIE_MAR) += pcie-Mar.o
+obj-$(CONFIG_KIRIN_PCIE_APR) += pcie-Apr.o
+obj-$(CONFIG_KIRIN_PCIE_MAY) += pcie-May.o
 
 # The following drivers are for devices that use the generic ACPI
 # pci_root.c driver but don't support standard ECAM config access.

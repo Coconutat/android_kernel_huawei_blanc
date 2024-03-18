@@ -17,11 +17,17 @@
 #include <linux/buffer_head.h>
 #include <linux/falloc.h>
 #include <linux/sched/signal.h>
+#ifdef CONFIG_MEMCG_PROTECT_LRU
+#include <linux/swap.h>
+#endif
 
 #include "internal.h"
 
 #include <asm/ioctls.h>
 
+#ifdef CONFIG_TASK_PROTECT_LRU
+#include <linux/hisi/protect_lru.h>
+#endif
 /* So that the fiemap access checks can't overflow on 32 bit machines. */
 #define FIEMAP_MAX_EXTENTS	(UINT_MAX / sizeof(struct fiemap_extent))
 
@@ -575,6 +581,60 @@ static int ioctl_fsthaw(struct file *filp)
 	return thaw_super(sb);
 }
 
+#ifdef CONFIG_MEMCG_PROTECT_LRU
+static int ioctl_protect_lru_set(struct file *filp, unsigned long arg)
+{
+	struct inode *inode;
+	int ret = 0;
+
+	if (!capable(CAP_SYS_ADMIN)) {
+		ret = -EPERM;
+		goto out;
+	}
+
+	inode = file_inode(filp);
+	if (!inode) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (arg >= 0 && arg <= PROTECT_MEMCG_MAX) {
+		inode->i_protect = arg;
+		pr_info("protect_lru: set file %s, num=%ld\n",
+				filp->f_path.dentry->d_name.name, arg);
+	} else
+		ret = -EINVAL;
+
+out:
+	return ret;
+}
+
+static int ioctl_protect_lru_get(struct file *filp)
+{
+	struct inode *inode;
+	int ret = 0, num;
+
+	if (!capable(CAP_SYS_ADMIN)) {
+		ret = -EPERM;
+		goto out;
+	}
+
+	inode = file_inode(filp);
+	if (!inode) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	num = inode->i_protect;
+	pr_info("protect_lru: get file %s, num=%d\n",
+			filp->f_path.dentry->d_name.name, num);
+
+out:
+	return ret;
+}
+#endif
+
+
 static int ioctl_file_dedupe_range(struct file *file, void __user *arg)
 {
 	struct file_dedupe_range __user *argp = arg;
@@ -678,6 +738,15 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
 
 	case FIDEDUPERANGE:
 		return ioctl_file_dedupe_range(filp, argp);
+#if  defined(CONFIG_TASK_PROTECT_LRU) || defined(CONFIG_MEMCG_PROTECT_LRU)
+	case FPROTECTLRUSET:
+		error = ioctl_protect_lru_set(filp, arg);
+		break;
+
+	case FPROTECTLRUGET:
+		error = ioctl_protect_lru_get(filp);
+		break;
+#endif
 
 	default:
 		if (S_ISREG(inode->i_mode))

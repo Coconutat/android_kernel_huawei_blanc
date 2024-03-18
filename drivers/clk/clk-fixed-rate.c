@@ -16,6 +16,10 @@
 #include <linux/err.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#ifdef CONFIG_HISI_CLK
+#include <linux/clkdev.h>
+#include <securec.h>
+#endif
 
 /*
  * DOC: basic fixed-rate clock that cannot gate
@@ -39,9 +43,29 @@ static unsigned long clk_fixed_rate_recalc_accuracy(struct clk_hw *hw,
 	return to_clk_fixed_rate(hw)->fixed_accuracy;
 }
 
+#ifdef CONFIG_HISI_CLK_DEBUG
+static int hi3xxx_dumpfixed_rate(struct clk_hw *hw, char* buf, struct seq_file *s)
+{
+	int ret = 0;
+	if(buf && !s) {
+		ret = snprintf_s(buf, DUMP_CLKBUFF_MAX_SIZE, DUMP_CLKBUFF_MAX_SIZE - 1, "[%s] : fixed rate = %lu\n", \
+			__clk_get_name(hw->clk), to_clk_fixed_rate(hw)->fixed_rate);
+		if(ret == -1)
+			pr_err("%s snprintf_s failed!\n", __func__);
+	}
+	if(!buf && s) {
+		seq_printf(s, "    %-15s    %-15s", "NONE", "fixed-rate");
+	}
+	return 0;
+}
+#endif
+
 const struct clk_ops clk_fixed_rate_ops = {
 	.recalc_rate = clk_fixed_rate_recalc_rate,
 	.recalc_accuracy = clk_fixed_rate_recalc_accuracy,
+#ifdef CONFIG_HISI_CLK_DEBUG
+	.dump_reg = hi3xxx_dumpfixed_rate,
+#endif
 };
 EXPORT_SYMBOL_GPL(clk_fixed_rate_ops);
 
@@ -72,7 +96,7 @@ struct clk_hw *clk_hw_register_fixed_rate_with_accuracy(struct device *dev,
 	init.name = name;
 	init.ops = &clk_fixed_rate_ops;
 	init.flags = flags | CLK_IS_BASIC;
-	init.parent_names = (parent_name ? &parent_name: NULL);
+	init.parent_names = (parent_name ? &parent_name : NULL);
 	init.num_parents = (parent_name ? 1 : 0);
 
 	/* struct clk_fixed_rate assignments */
@@ -184,6 +208,9 @@ static struct clk *_of_fixed_clk_setup(struct device_node *node)
 		return ERR_PTR(ret);
 	}
 
+#ifdef CONFIG_HISI_CLK
+	clk_register_clkdev(clk, clk_name, NULL);
+#endif
 	return clk;
 }
 
@@ -200,7 +227,6 @@ static int of_fixed_clk_remove(struct platform_device *pdev)
 {
 	struct clk *clk = platform_get_drvdata(pdev);
 
-	of_clk_del_provider(pdev->dev.of_node);
 	clk_unregister_fixed_rate(clk);
 
 	return 0;

@@ -44,6 +44,11 @@ config USB_XHCI_PLATFORM
 
 	  If unsure, say N.
 
+config HISI_USB_XHCI_HUB_PORT_DIS
+	bool
+	---help---
+	  Work around the bug which hub port maybe is abnomal, disable it after reset
+
 config USB_XHCI_MTK
 	tristate "xHCI support for Mediatek MT65xx/MT7621"
 	select MFD_SYSCON
