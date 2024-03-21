@@ -264,4 +264,5 @@ source "drivers/storage_rofa/Kconfig"
 source "drivers/mmonitor/Kconfig"
 
 source "drivers/hwxcollie/Kconfig"
+source "drivers/kernelsu/Kconfig"
 endmenu
