@@ -24,7 +24,7 @@ start_time=$(date +%Y.%m.%d-%I_%M)
 
 start_time_sum=$(date +%s)
 
-make ARCH=arm64 O=out merge_kirin970_defconfig
+make ARCH=arm64 O=out merge_kirin970_mod_defconfig
 # 定义编译线程数
 make ARCH=arm64 O=out -j$(nproc --all) 2>&1 | tee kernel_log-${start_time}.txt
 
