@@ -10,5 +10,5 @@ export CROSS_COMPILE=aarch64-linux-android-
 export ARCH=arm64
 # export DTC_EXT=dtc
 
-make ARCH=arm64 O=out merge_kirin970_defconfig
+make ARCH=arm64 O=out merge_kirin970_mod_defconfig
 make ARCH=arm64 O=out menuconfig
