@@ -8,7 +8,7 @@ export PATH=$PATH:$(pwd)/../Compiler/Google/GCC64/bin
 # Find those flag in Makefile!!!
 # 这两个标记请在Makefile内寻找！！！
 export CLANG_PREBUILTS_PATH=$(pwd)/../Compiler/Google/Clang/clang-r346389c/
-# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/../Compiler/Google/Clang/clang-r346389c/lib64/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/../Compiler/Google/Clang/clang-r346389c/lib64/
 
 
 export CROSS_COMPILE=aarch64-linux-android-
