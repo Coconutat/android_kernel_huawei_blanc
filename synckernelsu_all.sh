@@ -18,7 +18,7 @@ fi
 case $version in
     [Aa]*)
         read -p "Please enter the version number you want to install: " specified_version
-        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s "$specified_version"
+        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v"$specified_version"
         ;;
     [Bb]*)
         curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
