@@ -33,5 +33,5 @@ obj-$(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) += cpufreq_schedutil.o
 obj-$(CONFIG_MEMBARRIER) += membarrier.o
 obj-$(CONFIG_HISI_CORE_CTRL) += hisi_core_ctl.o
 obj-$(CONFIG_HISI_RTG) += hisi_rtg.o
-obj-y += frame/
+# obj-y += frame/
 obj-$(CONFIG_PSI) += psi.o
