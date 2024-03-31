@@ -2,7 +2,7 @@
 #设置环境
 
 # 交叉编译器路径
-export PATH=$PATH:$(pwd)/../Compiler/Google/GCC64/bin
+export PATH=$PATH:$(pwd)/../Compiler/Google/GCC64/bin:$(pwd)/../Compiler/Google/Clang/clang-r346389c/bin
 
 
 # Find those flag in Makefile!!!
@@ -24,9 +24,9 @@ start_time=$(date +%Y.%m.%d-%I_%M)
 
 start_time_sum=$(date +%s)
 
-make ARCH=arm64 O=out merge_kirin970_ksu_defconfig
+make ARCH=arm64 O=out CC="ccache clang" merge_kirin970_ksu_defconfig
 # 定义编译线程数
-make ARCH=arm64 O=out -j$(nproc --all) 2>&1 | tee kernel_log-${start_time}.txt
+make ARCH=arm64 O=out CC="ccache clang" -j$(nproc --all) 2>&1 | tee kernel_log-${start_time}.txt
 
 end_time_sum=$(date +%s)
 
