@@ -14,6 +14,7 @@
 #include <linux/uprobes.h>
 #include <linux/page-flags-layout.h>
 #include <linux/workqueue.h>
+#include <linux/xreclaimer_types.h>
 
 #include <asm/mmu.h>
 
@@ -300,15 +301,24 @@ struct vm_area_struct {
 	struct mm_struct *vm_mm;	/* The address space we belong to. */
 	pgprot_t vm_page_prot;		/* Access permissions of this VMA. */
 	unsigned long vm_flags;		/* Flags, see mm.h. */
-
+#ifdef CONFIG_VM_COPY
+	unsigned long ext_flags;	/* VM_COPY flags */
+#endif
 	/*
 	 * For areas with an address space and backing store,
 	 * linkage into the address_space->i_mmap interval tree.
+	 *
+	 * For private anonymous mappings, a pointer to a null terminated string
+	 * in the user process containing the name given to the vma, or NULL
+	 * if unnamed.
 	 */
-	struct {
-		struct rb_node rb;
-		unsigned long rb_subtree_last;
-	} shared;
+	union {
+		struct {
+			struct rb_node rb;
+			unsigned long rb_subtree_last;
+		} shared;
+		const char __user *anon_name;
+	};
 
 	/*
 	 * A file's MAP_PRIVATE vma can be in both i_mmap tree and anon_vma
@@ -337,7 +347,11 @@ struct vm_area_struct {
 	struct mempolicy *vm_policy;	/* NUMA policy for the VMA */
 #endif
 	struct vm_userfaultfd_ctx vm_userfaultfd_ctx;
-} __randomize_layout;
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	seqcount_t vm_sequence;
+	atomic_t vm_ref_count;		/* see vma_get(), vma_put() */
+#endif
+};
 
 struct core_thread {
 	struct task_struct *task;
@@ -351,6 +365,9 @@ struct core_state {
 };
 
 struct kioctx_table;
+#ifdef CONFIG_BLK_DEV_THROTTLING
+struct blk_throtl_io_limit;
+#endif
 struct mm_struct {
 	struct vm_area_struct *mmap;		/* list of VMAs */
 	struct rb_root mm_rb;
@@ -436,6 +453,9 @@ struct mm_struct {
 	mm_context_t context;
 
 	unsigned long flags; /* Must use atomic bitops to access the bits */
+#ifdef CONFIG_MEMORY_AFFINITY
+	u32 dma_zone_tag; /* memory affinity tag */
+#endif
 
 	struct core_state *core_state; /* coredumping support */
 #ifdef CONFIG_MEMBARRIER
@@ -444,6 +464,9 @@ struct mm_struct {
 #ifdef CONFIG_AIO
 	spinlock_t			ioctx_lock;
 	struct kioctx_table __rcu	*ioctx_table;
+#endif
+#ifdef CONFIG_BLK_DEV_THROTTLING
+	struct blk_throtl_io_limit	*io_limit;
 #endif
 #ifdef CONFIG_MEMCG
 	/*
@@ -501,11 +524,23 @@ struct mm_struct {
 #endif
 	struct work_struct async_put_work;
 
+#ifdef CONFIG_HW_XRECLAIMER
+	struct xreclaimer_mm mm_xreclaimer;
+#endif
+
 #if IS_ENABLED(CONFIG_HMM)
 	/* HMM needs to track a few things per mm */
 	struct hmm *hmm;
 #endif
-} __randomize_layout;
+
+#ifdef CONFIG_TASK_PROTECT_LRU
+	int protect;
+#endif
+
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	rwlock_t mm_rb_lock;
+#endif
+};
 
 extern struct mm_struct init_mm;
 
@@ -654,5 +689,14 @@ enum tlb_flush_reason {
 typedef struct {
 	unsigned long val;
 } swp_entry_t;
+
+/* Return the name for an anonymous mapping or NULL for a file-backed mapping */
+static inline const char __user *vma_get_anon_name(struct vm_area_struct *vma)
+{
+	if (vma->vm_file)
+		return NULL;
+
+	return vma->anon_name;
+}
 
 #endif /* _LINUX_MM_TYPES_H */

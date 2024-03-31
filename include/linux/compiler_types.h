@@ -230,6 +230,10 @@ struct ftrace_likely_data {
 # define __latent_entropy
 #endif
 
+#ifndef __copy
+# define __copy(symbol)
+#endif
+
 #ifndef __randomize_layout
 # define __randomize_layout __designated_init
 #endif
@@ -263,6 +267,18 @@ struct ftrace_likely_data {
 
 #ifndef __nostackprotector
 # define __nostackprotector
+#endif
+
+#ifndef __norecordmcount
+#define __norecordmcount
+#endif
+
+#ifndef __nocfi
+#define __nocfi
+#endif
+
+#ifndef __noscs
+#define __noscs
 #endif
 
 /*

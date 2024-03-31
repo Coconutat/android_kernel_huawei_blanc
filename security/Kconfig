@@ -6,6 +6,8 @@ menu "Security options"
 
 source security/keys/Kconfig
 
+source security/kshield/Kconfig
+
 config SECURITY_DMESG_RESTRICT
 	bool "Restrict unprivileged access to the kernel syslog"
 	default n
@@ -17,6 +19,15 @@ config SECURITY_DMESG_RESTRICT
 	  unless the dmesg_restrict sysctl is explicitly set to (1).
 
 	  If you are unsure how to answer this question, answer N.
+
+config SECURITY_PERF_EVENTS_RESTRICT
+	bool "Restrict unprivileged use of performance events"
+	depends on PERF_EVENTS
+	help
+	  If you say Y here, the kernel.perf_event_paranoid sysctl
+	  will be set to 3 by default, and no unprivileged use of the
+	  perf_event_open syscall will be permitted unless it is
+	  changed.
 
 config SECURITY
 	bool "Enable different security models"
@@ -263,5 +274,14 @@ config DEFAULT_SECURITY
 	default "apparmor" if DEFAULT_SECURITY_APPARMOR
 	default "" if DEFAULT_SECURITY_DAC
 
+source security/kernel_harden/Kconfig
+source security/check_root/Kconfig
+source security/hkip_atkinfo/Kconfig
+source security/mdpp_selfverify/Kconfig
+source security/hw_root_scan/Kconfig
+source security/kernel_stp/Kconfig
+source security/hwdps/Kconfig
+source security/sop/Kconfig
+source security/mdpp_ccmode/Kconfig
 endmenu
 

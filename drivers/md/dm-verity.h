@@ -36,8 +36,10 @@ struct dm_verity {
 	struct dm_dev *hash_dev;
 	struct dm_target *ti;
 	struct dm_bufio_client *bufio;
-	char *alg_name;
-	struct crypto_ahash *tfm;
+	char *alg_name_sha1;
+	char *alg_name_shas;
+	struct crypto_ahash *tfm_sha1;
+	struct crypto_ahash *tfm_shas;
 	u8 *root_digest;	/* digest of the root block */
 	u8 *salt;		/* salt: its size is salt_size */
 	u8 *zero_digest;	/* digest for a zero block */
@@ -63,6 +65,11 @@ struct dm_verity {
 	sector_t hash_level_block[DM_VERITY_MAX_LEVELS];
 
 	struct dm_verity_fec *fec;	/* forward error correction */
+	unsigned long *validated_blocks; /* bitset blocks validated */
+
+#if defined (CONFIG_DM_VERITY_HW_RETRY)
+	int verify_failed_flag;
+#endif
 };
 
 struct dm_verity_io {
@@ -131,4 +138,23 @@ extern int verity_hash(struct dm_verity *v, struct ahash_request *req,
 extern int verity_hash_for_block(struct dm_verity *v, struct dm_verity_io *io,
 				 sector_t block, u8 *digest, bool *is_zero);
 
+extern void verity_status(struct dm_target *ti, status_type_t type,
+			unsigned status_flags, char *result, unsigned maxlen);
+extern int verity_prepare_ioctl(struct dm_target *ti,
+                struct block_device **bdev, fmode_t *mode);
+extern int verity_iterate_devices(struct dm_target *ti,
+				iterate_devices_callout_fn fn, void *data);
+extern void verity_io_hints(struct dm_target *ti, struct queue_limits *limits);
+extern void verity_dtr(struct dm_target *ti);
+extern int verity_ctr(struct dm_target *ti, unsigned argc, char **argv);
+extern int verity_map(struct dm_target *ti, struct bio *bio);
+extern void dm_verity_avb_error_handler(void);
+int verity_hash_init(struct dm_verity *v, struct ahash_request *req,
+				struct verity_result *res, u32 count);
+int verity_hash_update(struct dm_verity *v, struct ahash_request *req,
+				const u8 *data, size_t len,	struct verity_result *res);
+int verity_hash_final(struct dm_verity *v, struct ahash_request *req,
+			     u8 *digest, struct verity_result *res);
+int verity_for_io_block(struct dm_verity *v, struct dm_verity_io *io,
+			struct bvec_iter *iter, struct verity_result *res);
 #endif /* DM_VERITY_H */

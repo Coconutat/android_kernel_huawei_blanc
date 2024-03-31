@@ -187,6 +187,7 @@ int ovl_want_write(struct dentry *dentry);
 void ovl_drop_write(struct dentry *dentry);
 struct dentry *ovl_workdir(struct dentry *dentry);
 const struct cred *ovl_override_creds(struct super_block *sb);
+void ovl_revert_creds(const struct cred *oldcred);
 struct super_block *ovl_same_sb(struct super_block *sb);
 bool ovl_can_decode_fh(struct super_block *sb);
 struct dentry *ovl_indexdir(struct super_block *sb);
@@ -288,15 +289,7 @@ bool ovl_is_private_xattr(const char *name);
 struct inode *ovl_new_inode(struct super_block *sb, umode_t mode, dev_t rdev);
 struct inode *ovl_get_inode(struct dentry *dentry, struct dentry *upperdentry,
 			    struct dentry *index);
-static inline void ovl_copyattr(struct inode *from, struct inode *to)
-{
-	to->i_uid = from->i_uid;
-	to->i_gid = from->i_gid;
-	to->i_mode = from->i_mode;
-	to->i_atime = from->i_atime;
-	to->i_mtime = from->i_mtime;
-	to->i_ctime = from->i_ctime;
-}
+void ovl_copyattr(struct inode *from, struct inode *to);
 
 /* dir.c */
 extern const struct inode_operations ovl_dir_inode_operations;
