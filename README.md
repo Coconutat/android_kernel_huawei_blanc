@@ -17,4 +17,5 @@
     1. [How to install the kernel](docs/1.Install_kernel.md)  
     2. [How to compile the kernel](docs/2.Compile_kernel.md)  
   
-**If you want to compile the kernel yourself and enable KSU, please do not upstream KSU code to the latest version.**For specific reasons, refer to document **How to compile the kernel**.
+**If you want to compile the kernel yourself and enable KSU, please do not upstream KSU code to the latest version.**  
+For specific reasons, refer to document **How to compile the kernel**.
