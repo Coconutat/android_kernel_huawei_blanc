@@ -4751,22 +4751,13 @@ int workqueue_prepare_cpu(unsigned int cpu)
 {
 	struct worker_pool *pool;
 
-#ifdef CONFIG_ARCH_HISI
-	set_smpboot_creating_threads(true);
-#endif
 	for_each_cpu_worker_pool(pool, cpu) {
 		if (pool->nr_workers)
 			continue;
 		if (!create_worker(pool)) {
-#ifdef CONFIG_ARCH_HISI
-			set_smpboot_creating_threads(false);
-#endif
 			return -ENOMEM;
 		}
 	}
-#ifdef CONFIG_ARCH_HISI
-	set_smpboot_creating_threads(false);
-#endif
 	return 0;
 }
 
