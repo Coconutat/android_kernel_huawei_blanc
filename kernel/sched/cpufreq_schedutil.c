@@ -698,7 +698,7 @@ static void sugov_set_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
 				   unsigned int flags)
 {
 #ifdef CONFIG_HISI_CPU_FREQ_GOV_SCHEDUTIL
-	if ((flags & SCHED_CPUFREQ_IOWAIT) || walt_cpu_overload_irqload(sg_cpu->cpu)) {
+	if ((flags & SCHED_CPUFREQ_IOWAIT)) {
 		sg_cpu->sg_policy->last_iowait = time;
 #else
 	if (flags & SCHED_CPUFREQ_IOWAIT) {

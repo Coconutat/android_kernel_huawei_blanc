@@ -52,14 +52,6 @@
 
 #include "workqueue_internal.h"
 
-#ifdef CONFIG_HISI_BB
-#include <linux/hisi/rdr_hisi_ap_hook.h>
-#endif
-
-#ifdef CONFIG_HUAWEI_DUBAI
-#include <chipset_common/dubai/dubai.h>
-#endif
-
 enum {
 	/*
 	 * worker_pool flags
@@ -2047,9 +2039,6 @@ __acquires(&pool->lock)
 	bool cpu_intensive = pwq->wq->flags & WQ_CPU_INTENSIVE;
 	int work_color;
 	struct worker *collision;
-#ifdef CONFIG_HUAWEI_DUBAI
-	u64 uptime;
-#endif
 
 #ifdef CONFIG_LOCKDEP
 	/*
@@ -2143,20 +2132,8 @@ __acquires(&pool->lock)
 	 */
 	lockdep_invariant_state(true);
 	trace_workqueue_execute_start(work);
-
-#ifdef CONFIG_HUAWEI_DUBAI
-	uptime = ktime_get_ns();
-#endif
-#ifdef CONFIG_HISI_BB
-	worker_hook((u64)(worker->current_func), 0);
-#endif
 	worker->current_func(work);
-#ifdef CONFIG_HISI_BB
-	worker_hook((u64)(worker->current_func), 1);
-#endif
-#ifdef CONFIG_HUAWEI_DUBAI
-	dubai_log_kworker((unsigned long)(worker->current_func), uptime);
-#endif
+
 	/*
 	 * While we must be careful to not use "work" after this, the trace
 	 * point will only record its address.
