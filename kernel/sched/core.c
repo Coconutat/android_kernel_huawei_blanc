@@ -36,9 +36,6 @@
 #include "sched.h"
 #include "../workqueue_internal.h"
 #include "../smpboot.h"
-#ifdef CONFIG_HISI_BB
-#include <linux/hisi/rdr_hisi_ap_hook.h>
-#endif
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
@@ -3287,9 +3284,6 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	rq_unpin_lock(rq, rf);
 	spin_release(&rq->lock.dep_map, 1, _THIS_IP_);
 
-#ifdef CONFIG_HISI_BB
-	task_switch_hook((void *)prev, (void *)next);
-#endif
 	/* Here we just switch the register state and the stack. */
 	switch_to(prev, next, prev);
 	barrier();
@@ -3720,9 +3714,6 @@ static noinline void __schedule_bug(struct task_struct *prev)
 		print_ip_sym(preempt_disable_ip);
 		pr_cont("\n");
 	}
-#ifndef CONFIG_HISI_BB_DEBUG
-	if (panic_on_warn)
-#endif
 		panic("scheduling while atomic\n");
 
 	dump_stack();
