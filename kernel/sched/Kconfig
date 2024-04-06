@@ -29,7 +29,7 @@ config SCHED_HISI_CALC_CUM_WINDOW_DEMAND
 
 config SCHED_HISI_CHECK_IRQLOAD
 	bool "Scheduler check irqload when select task's cpu"
-	default y
+	default n
 	help
 	  WALT caculates an irqload for each cpu and scheduler will avoid
 	  placing task on a high irqload cpu (if WALT enabled).
@@ -38,14 +38,14 @@ config SCHED_HISI_CHECK_IRQLOAD
 
 config SCHED_HISI_TOP_TASK
 	bool "Maintain the top task load of each cpu"
-	default y
+	default n
 	help
 	  Hisi schedutil governor may use the top task load as a guide to
 	  frequency evaluation.
 
 config SCHED_HISI_USE_WALT
 	bool "Scheduler use WALT for cpu util and task util"
-	default y
+	default n
 	help
 	  This option enables calculation of WALT's task_util/cpu_util
 	  signal, and sets sysctl_sched_use_walt_[cpu/task]_util to 1.
@@ -55,7 +55,7 @@ config SCHED_HISI_USE_WALT
 
 config SCHED_HISI_MIGRATE_SPREAD_LOAD
 	bool "Spread task's load when inter-cluster migration"
-	default y
+	default n
 	help
 	  In inter-cluster migration, this option will spread task's
 	  prev_window/curr_window to all cpus that the task has been
@@ -66,14 +66,14 @@ config SCHED_HISI_MIGRATE_SPREAD_LOAD
 config SCHED_HISI_TOP_TASK_SKIP_HISPEED_LOGIC
 	bool "Let top task ignore above_hipeed_delay"
 	depends on SCHED_HISI_TOP_TASK
-	default y
+	default n
 	help
 	  For schedutil governor, this option skips hispeed logic when
 	  ADD_TOP_TASK event triggers freq update.
 
 config SCHED_HISI_RUNNING_TASK_ROTATION
 	bool "Rotate running tasks between clusters"
-	default y
+	default n
 	depends on HISI_EAS_SCHED
 	depends on HISI_CORE_CTRL
 	depends on HISI_ED_TASK && !HISI_ED_TASK_RESET_AT_UPMIGRATION
@@ -88,7 +88,7 @@ config SCHED_HISI_RUNNING_TASK_ROTATION
 
 config SCHED_HISI_PRED_LOAD
 	bool "Calculate predicted load for each task"
-	default y
+	default n
 	depends on HISI_CPU_FREQ_GOV_SCHEDUTIL
 	help
 	  Another signal to improve schedutil. This will help to ramp up
