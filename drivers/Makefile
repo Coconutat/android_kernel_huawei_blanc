@@ -221,5 +221,3 @@ obj-$(CONFIG_HW_CPULOAD_NOTI) += cpuload/
 obj-$(CONFIG_HW_MEMORY_MONITOR) += mmonitor/
 obj-$(CONFIG_HW_MEMORY_MONITOR) += allocpages_delayacct/
 obj-$(CONFIG_HW_XCOLLIE) += hwxcollie/
-
-obj-$(CONFIG_KSU) += kernelsu/
