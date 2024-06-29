@@ -80,7 +80,7 @@ module_param(srpt_srq_size, int, 0444);
 MODULE_PARM_DESC(srpt_srq_size,
 		 "Shared receive queue (SRQ) size.");
 
-static int srpt_get_u64_x(char *buffer, struct kernel_param *kp)
+static int srpt_get_u64_x(char *buffer, const struct kernel_param *kp)
 {
 	return sprintf(buffer, "0x%016llx", *(u64 *)kp->arg);
 }
@@ -1775,8 +1775,8 @@ static void __srpt_close_all_ch(struct srpt_device *sdev)
 
 	list_for_each_entry(ch, &sdev->rch_list, list) {
 		if (srpt_disconnect_ch(ch) >= 0)
-			pr_info("Closing channel %s because target %s has been disabled\n",
-				ch->sess_name,
+			pr_info("Closing channel %s-%d because target %s has been disabled\n",
+				ch->sess_name, ch->qp->qp_num,
 				sdev->device->name);
 		srpt_close_ch(ch);
 	}

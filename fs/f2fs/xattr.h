@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * fs/f2fs/xattr.h
  *
@@ -9,10 +10,6 @@
  * On-disk format of extended attributes for the ext2 filesystem.
  *
  * (C) 2001 Andreas Gruenbacher, <a.gruenbacher@computer.org>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
  */
 #ifndef __F2FS_XATTR_H__
 #define __F2FS_XATTR_H__
@@ -37,13 +34,19 @@
 #define F2FS_XATTR_INDEX_ADVISE			7
 /* Should be same as EXT4_XATTR_INDEX_ENCRYPTION */
 #define F2FS_XATTR_INDEX_ENCRYPTION		9
+#define F2FS_XATTR_INDEX_ECE_ENCRYPTION		10
+#ifdef CONFIG_SCSI_UFS_ENHANCED_INLINE_CRYPTO_V3
+#define F2FS_XATTR_INDEX_ENCRYPTION_METADATA	11
+#endif
 
-#define F2FS_XATTR_NAME_ENCRYPTION_CONTEXT	"c"
+#define F2FS_XATTR_NAME_ENCRYPTION_CONTEXT		"c"
 
 struct f2fs_xattr_header {
 	__le32  h_magic;        /* magic number for identification */
 	__le32  h_refcount;     /* reference count */
-	__u32   h_reserved[4];  /* zero right now */
+	__le32  h_ctx_crc;	/* crc for fscrypt context */
+	__le32  h_xattr_flags;  /* flags to check the sdp encryption */
+	__u32   h_reserved[2];  /* zero right now */
 };
 
 struct f2fs_xattr_entry {
@@ -74,6 +77,8 @@ struct f2fs_xattr_entry {
 				entry = XATTR_NEXT_ENTRY(entry))
 #define VALID_XATTR_BLOCK_SIZE	(PAGE_SIZE - sizeof(struct node_footer))
 #define XATTR_PADDING_SIZE	(sizeof(__u32))
+#define XATTR_SIZE(x,i)		(((x) ? VALID_XATTR_BLOCK_SIZE : 0) +	\
+						(inline_xattr_size(i)))
 #define MIN_OFFSET(i)		XATTR_ALIGN(inline_xattr_size(i) +	\
 						VALID_XATTR_BLOCK_SIZE)
 
@@ -123,6 +128,9 @@ extern int f2fs_setxattr(struct inode *, int, const char *,
 extern int f2fs_getxattr(struct inode *, int, const char *, void *,
 						size_t, struct page *);
 extern ssize_t f2fs_listxattr(struct dentry *, char *, size_t);
+struct f2fs_xattr_header* get_xattr_header(struct inode *, struct page *,
+					   struct page **);
+void put_xattr_header(struct page *);
 #else
 
 #define f2fs_xattr_handlers	NULL

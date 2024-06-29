@@ -67,10 +67,12 @@
  */
 #ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
 #define TEXT_MAIN .text .text.[0-9a-zA-Z_]*
+#define TEXT_CFI_MAIN .text.cfi .text.[0-9a-zA-Z_]*.cfi
 #define DATA_MAIN .data .data.[0-9a-zA-Z_]*
 #define BSS_MAIN .bss .bss.[0-9a-zA-Z_]*
 #else
 #define TEXT_MAIN .text
+#define TEXT_CFI_MAIN .text.cfi
 #define DATA_MAIN .data
 #define BSS_MAIN .bss
 #endif
@@ -105,7 +107,7 @@
 #ifdef CONFIG_FTRACE_MCOUNT_RECORD
 #define MCOUNT_REC()	. = ALIGN(8);				\
 			VMLINUX_SYMBOL(__start_mcount_loc) = .; \
-			*(__mcount_loc)				\
+			KEEP(*(__mcount_loc))			\
 			VMLINUX_SYMBOL(__stop_mcount_loc) = .;
 #else
 #define MCOUNT_REC()
@@ -268,6 +270,82 @@
 	*(.data..init_task)						\
 	VMLINUX_SYMBOL(__end_init_task) = .;
 
+#ifdef CONFIG_HKIP_PRMEM
+/*
+ * It's important that pages containing WR_RARE data do not hold anything
+ * else, to avoid both accidentally unprotecting something that is supposed
+ * to stay read-only all the time and also to not protect something else
+ * that is supposed to be writeable all the time.
+ *
+ * RW_AFTER_INIT_DATA is provided as support during development/debug.
+ */
+
+#define PRMEM_OBJECT(object)						\
+	VMLINUX_SYMBOL(__start_data_##object) = .;			\
+	*(.data..##object);						\
+	VMLINUX_SYMBOL(__end_data_##object) = .;
+
+#define PRMEM_WR_DATA							\
+	PRMEM_OBJECT(prmem_wr)
+
+#define PRMEM_WR_AFTER_INIT_DATA					\
+	PRMEM_OBJECT(prmem_wr_after_init)
+
+#define PRMEM_RW_DATA							\
+	PRMEM_OBJECT(prmem_rw)
+
+#define PRMEM_POOLS(type)						\
+	PRMEM_OBJECT(type##_prmem_pools)
+
+#define PRMEM_OBJ_CACHES						\
+	PRMEM_OBJECT(prmem_object_caches)
+
+#define PRMEM_POOLS_DATA						\
+	VMLINUX_SYMBOL(__start_data_prmem_pools) = .;			\
+	PRMEM_POOLS(ro_no_recl)						\
+	PRMEM_POOLS(wr_no_recl)						\
+	PRMEM_POOLS(start_wr_no_recl)					\
+	PRMEM_POOLS(start_wr_recl)					\
+	PRMEM_POOLS(wr_recl)						\
+	PRMEM_POOLS(ro_recl)						\
+	PRMEM_POOLS(rw_recl)						\
+	VMLINUX_SYMBOL(__end_data_prmem_pools) = .;
+
+/* All sections contain a filler quad word, to avoid them being empty. */
+#define FILLER  QUAD(0xDEADBEEF)
+
+#define PRMEM_SECTIONS							\
+	. = ALIGN(PAGE_SIZE);						\
+	VMLINUX_SYMBOL(__start_data_prmem) = .;				\
+	.prmem_wr_data : ALIGN(PAGE_SIZE) {				\
+		VMLINUX_SYMBOL(__start_data_wr) = .;			\
+		PRMEM_POOLS_DATA					\
+		PRMEM_OBJ_CACHES					\
+		PRMEM_WR_DATA						\
+		FILLER;							\
+		. = ALIGN((PAGE_SIZE));					\
+		VMLINUX_SYMBOL(__end_data_wr) = .;			\
+	}								\
+	.prmem_wr_after_init_data : ALIGN(PAGE_SIZE) {			\
+		VMLINUX_SYMBOL(__start_data_wr_after_init) = .;		\
+		PRMEM_WR_AFTER_INIT_DATA				\
+		FILLER;							\
+		. = ALIGN((PAGE_SIZE));					\
+		VMLINUX_SYMBOL(__end_data_wr_after_init) = .;		\
+	}								\
+	.prmem_rw_data : ALIGN(PAGE_SIZE) {				\
+		VMLINUX_SYMBOL(__start_data_rw) = .;			\
+		PRMEM_RW_DATA						\
+		FILLER;							\
+		. = ALIGN((PAGE_SIZE));					\
+		VMLINUX_SYMBOL(__end_data_rw) = .;			\
+	}								\
+	. = ALIGN(PAGE_SIZE);						\
+	VMLINUX_SYMBOL(__end_data_prmem) = .;
+#else /* CONFIG_HKIP_PRMEM */
+#define PRMEM_SECTIONS
+#endif /* CONFIG_HKIP_PRMEM */
+
 /*
  * Allow architectures to handle ro_after_init data on their
  * own by defining an empty RO_AFTER_INIT_DATA.
@@ -279,6 +357,18 @@
 	VMLINUX_SYMBOL(__end_ro_after_init) = .;
 #endif
 
+#ifndef RO_AFTER_INIT_SECTION
+#define RO_AFTER_INIT_SECTION(align)					\
+	. = ALIGN((align));						\
+	/* RO after init data section */				\
+	.ro_after_init_data : AT(ADDR(.ro_after_init_data) - LOAD_OFFSET) { \
+		VMLINUX_SYMBOL(__start_data_ro_after_init) = .;		\
+		RO_AFTER_INIT_DATA					\
+		. = ALIGN((align));					\
+		VMLINUX_SYMBOL(__end_data_ro_after_init) = .;		\
+	}
+#endif
+
 /*
  * Read only Data
  */
@@ -287,7 +377,6 @@
 	.rodata           : AT(ADDR(.rodata) - LOAD_OFFSET) {		\
 		VMLINUX_SYMBOL(__start_rodata) = .;			\
 		*(.rodata) *(.rodata.*)					\
-		RO_AFTER_INIT_DATA	/* Read only after init */	\
 		KEEP(*(__vermagic))	/* Kernel version magic */	\
 		. = ALIGN(8);						\
 		VMLINUX_SYMBOL(__start___tracepoints_ptrs) = .;		\
@@ -460,10 +549,11 @@
 		ALIGN_FUNCTION();					\
 		*(.text.hot TEXT_MAIN .text.fixup .text.unlikely)	\
 		*(.text..refcount)					\
+		*(.text..ftrace)					\
+		*(TEXT_CFI_MAIN) 					\
 		*(.ref.text)						\
 	MEM_KEEP(init.text)						\
 	MEM_KEEP(exit.text)						\
-
 
 /* sched.text is aling to function alignment to secure we have same
  * address even at second ld pass when generating System.map */
@@ -512,7 +602,7 @@
 		VMLINUX_SYMBOL(__softirqentry_text_end) = .;
 
 /* Section used for early init (in .S files) */
-#define HEAD_TEXT  *(.head.text)
+#define HEAD_TEXT  KEEP(*(.head.text))
 
 #define HEAD_TEXT_SECTION							\
 	.head.text : AT(ADDR(.head.text) - LOAD_OFFSET) {		\
@@ -557,7 +647,7 @@
 	MEM_DISCARD(init.data)						\
 	KERNEL_CTORS()							\
 	MCOUNT_REC()							\
-	*(.init.rodata)							\
+	*(.init.rodata .init.rodata.*)					\
 	FTRACE_EVENTS()							\
 	TRACE_SYSCALLS()						\
 	KPROBE_BLACKLIST()						\
@@ -576,7 +666,7 @@
 	EARLYCON_TABLE()
 
 #define INIT_TEXT							\
-	*(.init.text)							\
+	*(.init.text .init.text.*)					\
 	*(.text.startup)						\
 	MEM_DISCARD(init.text)
 
@@ -593,7 +683,7 @@
 	MEM_DISCARD(exit.text)
 
 #define EXIT_CALL							\
-	*(.exitcall.exit)
+	KEEP(*(.exitcall.exit))
 
 /*
  * bss (Block Started by Symbol) - uninitialized data
@@ -696,7 +786,7 @@
 		KEEP(*(.orc_unwind_ip))					\
 		VMLINUX_SYMBOL(__stop_orc_unwind_ip) = .;		\
 	}								\
-	. = ALIGN(2);							\
+	. = ALIGN(6);							\
 	.orc_unwind : AT(ADDR(.orc_unwind) - LOAD_OFFSET) {		\
 		VMLINUX_SYMBOL(__start_orc_unwind) = .;			\
 		KEEP(*(.orc_unwind))					\

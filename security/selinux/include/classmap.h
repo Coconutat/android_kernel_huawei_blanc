@@ -26,9 +26,9 @@
 	    "audit_control", "setfcap"
 
 #define COMMON_CAP2_PERMS  "mac_override", "mac_admin", "syslog", \
-		"wake_alarm", "block_suspend", "audit_read"
+		"wake_alarm", "block_suspend", "audit_read", "perf_event"
 
-#if CAP_LAST_CAP > CAP_AUDIT_READ
+#if CAP_LAST_CAP > CAP_PERF_EVENT
 #error New capability defined, please update COMMON_CAP2_PERMS.
 #endif
 
@@ -239,6 +239,8 @@ struct security_class_mapping secclass_map[] = {
 	  { "access", NULL } },
 	{ "infiniband_endport",
 	  { "manage_subnet", NULL } },
+	{ "bpf",
+	  {"map_create", "map_read", "map_write", "prog_load", "prog_run"} },
 	{ NULL }
   };
 

@@ -374,7 +374,8 @@ static void mqueue_evict_inode(struct inode *inode)
 	struct user_struct *user;
 	unsigned long mq_bytes, mq_treesize;
 	struct ipc_namespace *ipc_ns;
-	struct msg_msg *msg;
+	struct msg_msg *msg, *nmsg;
+	LIST_HEAD(tmp_msg);
 
 	clear_inode(inode);
 
@@ -385,9 +386,14 @@ static void mqueue_evict_inode(struct inode *inode)
 	info = MQUEUE_I(inode);
 	spin_lock(&info->lock);
 	while ((msg = msg_get(info)) != NULL)
-		free_msg(msg);
+		list_add_tail(&msg->m_list, &tmp_msg);
 	kfree(info->node_cache);
 	spin_unlock(&info->lock);
+
+	list_for_each_entry_safe(msg, nmsg, &tmp_msg, m_list) {
+		list_del(&msg->m_list);
+		free_msg(msg);
+	}
 
 	/* Total amount of bytes accounted for the mqueue */
 	mq_treesize = info->attr.mq_maxmsg * sizeof(struct msg_msg) +
@@ -747,7 +753,7 @@ static struct file *do_create(struct ipc_namespace *ipc_ns, struct inode *dir,
 	}
 
 	mode &= ~current_umask();
-	ret = vfs_create(dir, path->dentry, mode, true);
+	ret = vfs_create2(path->mnt, dir, path->dentry, mode, true);
 	path->dentry->d_fsdata = NULL;
 	if (ret)
 		return ERR_PTR(ret);
@@ -763,7 +769,7 @@ static struct file *do_open(struct path *path, int oflag)
 	if ((oflag & O_ACCMODE) == (O_RDWR | O_WRONLY))
 		return ERR_PTR(-EINVAL);
 	acc = oflag2acc[oflag & O_ACCMODE];
-	if (inode_permission(d_inode(path->dentry), acc))
+	if (inode_permission2(path->mnt, d_inode(path->dentry), acc))
 		return ERR_PTR(-EACCES);
 	return dentry_open(path, oflag, current_cred());
 }
@@ -792,7 +798,7 @@ static int do_mq_open(const char __user *u_name, int oflag, umode_t mode,
 	ro = mnt_want_write(mnt);	/* we'll drop it in any case */
 	error = 0;
 	inode_lock(d_inode(root));
-	path.dentry = lookup_one_len(name->name, root, strlen(name->name));
+	path.dentry = lookup_one_len2(name->name, mnt, root, strlen(name->name));
 	if (IS_ERR(path.dentry)) {
 		error = PTR_ERR(path.dentry);
 		goto out_putfd;
@@ -872,7 +878,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
 	if (err)
 		goto out_name;
 	inode_lock_nested(d_inode(mnt->mnt_root), I_MUTEX_PARENT);
-	dentry = lookup_one_len(name->name, mnt->mnt_root,
+	dentry = lookup_one_len2(name->name, mnt, mnt->mnt_root,
 				strlen(name->name));
 	if (IS_ERR(dentry)) {
 		err = PTR_ERR(dentry);
@@ -884,7 +890,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
 		err = -ENOENT;
 	} else {
 		ihold(inode);
-		err = vfs_unlink(d_inode(dentry->d_parent), dentry, NULL);
+		err = vfs_unlink2(mnt, d_inode(dentry->d_parent), dentry, NULL);
 	}
 	dput(dentry);
 
