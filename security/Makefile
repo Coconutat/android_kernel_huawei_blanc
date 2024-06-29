@@ -33,5 +33,7 @@ subdir-$(CONFIG_INTEGRITY)		+= integrity
 obj-$(CONFIG_INTEGRITY)			+= integrity/
 
 # HW Object
+obj-$(CONFIG_HUAWEI_SOP)		+= sop/
+obj-$(CONFIG_HWDPS) += hwdps/
 include security/kernel_harden/Makefile
 
