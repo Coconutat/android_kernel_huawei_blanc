@@ -1,4 +1,4 @@
-#!/bin/bash
+!/bin/bash
 
 if [ -d KernelSU ]; then
     echo "Found KernelSU Folder, removing it..."
@@ -8,7 +8,7 @@ else
     echo "KernelSU Folder not found, proceeding..."
 fi
 
-read -p "Please enter the version number (A/a is tags version.B/b is main version.): " version
+read -p "Please enter the version number (A/a is tags version.B/b is main version.C/c is special v0.9.2 Version For Huawei): " version
 
 if [ "$version" == "" ]; then
     echo "No version specified. Exiting."
@@ -22,6 +22,9 @@ case $version in
         ;;
     [Bb]*)
         curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
+        ;;
+    [Cc]*)
+        curl -LSs https://raw.githubusercontent.com/Coconutat/KernelSU_backup/0.9.2_upstream_backup/kernel/setup.sh | bash -s 0.9.2_upstream_backup
         ;;
     *)
         echo "Invalid option. Exiting."
