@@ -26,7 +26,7 @@ start_time_sum=$(date +%s)
 
 make ARCH=arm64 O=out CC="ccache clang -fcolor-diagnostics -fdiagnostics-color=always" merge_kirin970_ksu_defconfig
 # 定义编译线程数
-make ARCH=arm64 O=out CC="ccache clang -fcolor-diagnostics -fdiagnostics-color=always" -j$(nproc --all) 2>&1 | tee kernel_log-${start_time}.txt
+make ARCH=arm64 O=out CC="ccache clang -fcolor-diagnostics -fdiagnostics-color=always" -j$(nproc --all) 2>&1 | tee kernel_log-${start_time}.log
 
 end_time_sum=$(date +%s)
 
