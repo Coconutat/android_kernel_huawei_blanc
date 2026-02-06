@@ -57,6 +57,7 @@ if [ -f out/arch/arm64/boot/Image.gz ]; then
     echo "正在处理原始内核 (Original)..."
     
     # 1. 保存原始 Image.gz
+    cp out/arch/arm64/boot/Image Build_Kernel/Original/Image
     cp out/arch/arm64/boot/Image.gz Build_Kernel/Original/Image.gz
     
     # 2. 打包原始 img
