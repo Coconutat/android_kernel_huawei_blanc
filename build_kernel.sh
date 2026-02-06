@@ -84,6 +84,8 @@ if [ -f out/arch/arm64/boot/Image.gz ]; then
             # 将原始 Image.gz 复制到当前目录准备解压，避免污染 Original 目录
             cp out/arch/arm64/boot/Image Build_Kernel/KPM/Image
             cd Build_Kernel/KPM/
+            # ls to see files
+            ls -l
 
             echo "正在运行 patch_linux 工具..."
             ../../$PATCH_TOOL
@@ -94,11 +96,15 @@ if [ -f out/arch/arm64/boot/Image.gz ]; then
                 mv -f oImage Image
             fi
 
+            # ls to see files
             ls -l
 
             echo "正在重新压缩为 Image.gz 并保存到 KPM 目录..."
             # 压缩并输出到 KPM 目录
-            gzip -k Image Image.gz
+            # fix some compression issues by using -n to avoid timestamp
+            # fix no max compression by using -9
+            gzip -n -9 -c Image > Image.gz
+            # ls to see files
             ls -l
             cd ../..
             
