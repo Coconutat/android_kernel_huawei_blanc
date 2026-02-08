@@ -41,7 +41,6 @@
 extern bool susfs_is_current_ksu_domain(void);
 extern bool susfs_is_sdcard_android_data_decrypted;
 
-static DEFINE_IDA(susfs_ksu_mnt_group_ida);
 static atomic64_t susfs_ksu_mounts = ATOMIC64_INIT(0);
 static int susfs_mnt_group_start = DEFAULT_KSU_MNT_GROUP_ID;
 
@@ -170,11 +169,11 @@ static int mnt_alloc_group_id(struct mount *mnt)
 	int res;
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (!susfs_is_sdcard_android_data_decrypted && mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
-		if (!ida_pre_get(&susfs_ksu_mnt_group_ida, GFP_KERNEL))
+	if (susfs_is_current_ksu_domain()) {
+		if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
 			return -ENOMEM;
-		// If so, assign a sus mnt_group id DEFAULT_KSU_MNT_GROUP_ID from susfs_ksu_mnt_group_ida
-		res = ida_get_new_above(&susfs_ksu_mnt_group_ida,
+		// If so, assign a sus mnt_group id DEFAULT_KSU_MNT_GROUP_ID from mnt_group_ida
+		res = ida_get_new_above(&mnt_group_ida,
 					susfs_mnt_group_start,
 					&mnt->mnt_group_id);
 		if (!res)
@@ -200,17 +199,6 @@ static int mnt_alloc_group_id(struct mount *mnt)
 void mnt_release_group_id(struct mount *mnt)
 {
 	int id = mnt->mnt_group_id;
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	// If mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID, it means 'mnt' is also sus mount,
-	// then we free the mnt->mnt_group_id from susfs_ksu_mnt_group_ida
-	if (!susfs_is_sdcard_android_data_decrypted && id >= DEFAULT_KSU_MNT_GROUP_ID) {
-		ida_remove(&susfs_ksu_mnt_group_ida, id);
-		if (susfs_mnt_group_start > id)
-			susfs_mnt_group_start = id;
-		mnt->mnt_group_id = 0;
-		return;
-	}
-#endif
 	ida_remove(&mnt_group_ida, id);
 	if (mnt_group_start > id)
 		mnt_group_start = id;
