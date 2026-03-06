@@ -3,6 +3,9 @@
 
 #include <linux/bits.h>
 #include <linux/version.h> // We need check kernel version.
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+#include <linux/cred.h>
+#endif
 
 /********/
 /* ENUM */
@@ -42,11 +45,11 @@
 #define TRY_UMOUNT_DEFAULT 0 /* used by susfs_try_umount() */
 #define TRY_UMOUNT_DETACH 1 /* used by susfs_try_umount() */
 
-#define DEFAULT_KSU_MNT_ID 500000 /* used by mount->mnt_id */
+#define VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT 0x80000000 /* used for mounts that are unshared by ksu process */
+#define DEFAULT_KSU_MNT_ID 500000 /* used for mounts created or single cloned by ksu process */
 #define DEFAULT_KSU_MNT_GROUP_ID 5000 /* used by mount->mnt_group_id */
 
 /*
- * mount->mnt.susfs_mnt_id_backup => storing original mount's mnt_id
  * inode->i_mapping->flags => A 'unsigned long' type storing flag 'AS_FLAGS_', bit 1 to 31 is not usable since 6.12
  * nd->state => storing flag 'ND_STATE_'
  * nd->flags => storing flag 'ND_FLAGS_'
@@ -59,20 +62,10 @@
 #define AS_FLAGS_SUS_MOUNT 34
 #define AS_FLAGS_SUS_KSTAT 35
 #define AS_FLAGS_OPEN_REDIRECT 36
-#define AS_FLAGS_ANDROID_DATA_ROOT_DIR 37
-#define AS_FLAGS_SDCARD_ROOT_DIR 38
 #define AS_FLAGS_SUS_MAP 39
-#define BIT_SUS_PATH BIT(33)
-#define BIT_SUS_MOUNT BIT(34)
-#define BIT_SUS_KSTAT BIT(35)
-#define BIT_OPEN_REDIRECT BIT(36)
-#define BIT_ANDROID_DATA_ROOT_DIR BIT(37)
-#define BIT_ANDROID_SDCARD_ROOT_DIR BIT(38)
-#define BIT_SUS_MAPS BIT(39)
 
 #define ND_STATE_LOOKUP_LAST 32
 #define ND_STATE_OPEN_LAST 64
-#define ND_STATE_LAST_SDCARD_SUS_PATH 128
 #define ND_FLAGS_LOOKUP_LAST		0x2000000
  
 #define MAGIC_MOUNT_WORKDIR "/debug_ramdisk/workdir"
@@ -124,4 +117,14 @@ static inline bool susfs_is_current_proc_umounted(void) {
 static inline void susfs_set_current_proc_umounted(void) {
 	set_ti_thread_flag(&current->thread_info, TIF_PROC_UMOUNTED);
 }
+
+static inline bool susfs_is_current_proc_umounted_app(void) {
+	return (test_ti_thread_flag(&current->thread_info, TIF_PROC_UMOUNTED) &&
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+	__kuid_val(current_uid()) >= 10000);
+#else
+	current_uid().val >= 10000);
+#endif
+}
+
 #endif // #ifndef KSU_SUSFS_DEF_H
