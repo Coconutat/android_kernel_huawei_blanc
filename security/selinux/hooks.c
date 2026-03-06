@@ -2370,7 +2370,16 @@ static int check_nnp_nosuid(const struct linux_binprm *bprm,
 			    const struct task_security_struct *old_tsec,
 			    const struct task_security_struct *new_tsec)
 {
+	int nnp = (bprm->unsafe & LSM_UNSAFE_NO_NEW_PRIVS);
+	int nosuid = !mnt_may_suid(bprm->file->f_path.mnt);
+	int rc;
+	u32 av;
 
+	if (!nnp && !nosuid)
+		return 0; /* neither NNP nor nosuid */
+
+	if (new_tsec->sid == old_tsec->sid)
+		return 0; /* No change in credentials */
 
 	/*
 	 * If the policy enables the nnp_nosuid_transition policy capability,
