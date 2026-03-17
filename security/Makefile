@@ -3,7 +3,7 @@
 # Makefile for the kernel security code
 #
 
-obj-$(CONFIG_KEYS)			+= keys/778
+obj-$(CONFIG_KEYS)			+= keys/
 subdir-$(CONFIG_SECURITY_SELINUX)	+= selinux
 subdir-$(CONFIG_SECURITY_SMACK)		+= smack
 subdir-$(CONFIG_SECURITY_TOMOYO)        += tomoyo
