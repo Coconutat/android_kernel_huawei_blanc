@@ -122,3 +122,10 @@ all.config
 
 # Kdevelop4
 *.kdev4
+
+# Personal
+KernelSU
+drivers/kernelsu 
+out
+kernel_log-*.txt
+kernel_log-*.log
