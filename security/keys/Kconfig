@@ -2,8 +2,6 @@
 # Key management configuration
 #
 
-menu "Keys"
-
 config KEYS
 	bool "Enable access key retention support"
 	select ASSOCIATIVE_ARRAY
@@ -98,9 +96,8 @@ config KEY_DH_OPERATIONS
        select CRYPTO_HASH
        select CRYPTO_DH
        help
-	  	This option provides support for calculating Diffie-Hellman
-	  	public keys and shared secrets using values stored as keys
-	  	in the kernel.
-	  	If you are unsure as to whether this is required, answer N.
+	 This option provides support for calculating Diffie-Hellman
+	 public keys and shared secrets using values stored as keys
+	 in the kernel.
 
-endmenu
+	 If you are unsure as to whether this is required, answer N.
