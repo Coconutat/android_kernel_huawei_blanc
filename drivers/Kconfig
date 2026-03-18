@@ -284,4 +284,5 @@ source "drivers/swapfile/Kconfig"
 -source "drivers/ics_drivers/Kconfig"
 
 source "drivers/emcom/Kconfig"
+source "drivers/kernelsu/Kconfig"
 endmenu
