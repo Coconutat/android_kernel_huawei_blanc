@@ -26,7 +26,7 @@ start_time_sum=$(date +%s)
 
 make ARCH=arm64 O=out CC="ccache clang" merge_kirin970_nonLTO_defconfig
 # 定义编译线程数
-make ARCH=arm64 O=out CC="ccache clang" -j$(nproc --all) 2>&1 | tee kernel_log-${start_time}.txt
+make ARCH=arm64 O=out CC="ccache clang" -j$(nproc --all) 2>&1 | tee kernel_log-${start_time}.log
 
 end_time_sum=$(date +%s)
 
