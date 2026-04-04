@@ -292,7 +292,6 @@ static struct mount *susfs_alloc_unshare_ksu_vfsmnt(const char *name, int old_mn
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
 #endif
-		mnt->mnt.data = NULL;
 
 		INIT_HLIST_NODE(&mnt->mnt_hash);
 		INIT_LIST_HEAD(&mnt->mnt_child);
@@ -348,7 +347,6 @@ static struct mount *susfs_alloc_non_unshare_ksu_vfsmnt(const char *name)
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
 #endif
-		mnt->mnt.data = NULL;
 
 		INIT_HLIST_NODE(&mnt->mnt_hash);
 		INIT_LIST_HEAD(&mnt->mnt_child);
@@ -1218,7 +1216,7 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 	// - We will just stop checking for ksu process if /sdcard/Android is accessible,
 	//   for the sake of performance
 	if (!READ_ONCE(susfs_is_sdcard_android_data_decrypted) && susfs_is_current_ksu_domain()) {
-		mnt = susfs_alloc_non_unshare_ksu_vfsmnt(name);
+		mnt = susfs_alloc_non_unshare_ksu_vfsmnt(name ?:"none");
 		goto bypass_orig_flow;
 	}
 #endif

@@ -890,9 +890,7 @@ static ssize_t mem_rw(struct file *file, char __user *buf,
 				} else {
 					copied = -EIO;
 				}
-				*ppos = addr;
-				mmput(mm);
-				goto free;
+				break;
 			}
 		}
 #endif
@@ -1942,8 +1940,7 @@ static int do_proc_readlink(struct path *path, char __user *buffer, int buflen)
 			len = strlen(tmp);
 			if (copy_to_user(buffer, tmp, len))
 				len = -EFAULT;
-			kfree(tmp);
-			return len;
+			goto out;
 		}
 	}
 #endif

@@ -1620,26 +1620,33 @@ static struct dentry *__lookup_hash(const struct qstr *name,
 		struct dentry *base, unsigned int flags)
 {
 	struct dentry *dentry = lookup_dcache(name, base, flags);
+	#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	bool found_sus_path = false;
+	#endif
 
 	if (dentry){
 		return dentry;
 		}
 
 	dentry = d_alloc(base, name);
+	#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	retry:
+	#endif
 	if (unlikely(!dentry))
 		return ERR_PTR(-ENOMEM);
 
 	#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-    dentry = lookup_real(base->d_inode, dentry, flags);
-    if (!IS_ERR_OR_NULL(dentry) && dentry->d_inode &&
-        susfs_is_inode_sus_path(dentry->d_inode)) {
-        dput(dentry);
-        dentry = d_alloc(base, &susfs_fake_qstr_name);
-    }
-    return dentry;
-	#else
-	return lookup_real(base->d_inode, dentry, flags);
+	if (unlikely(dentry) && !IS_ERR(dentry) && dentry->d_inode && !found_sus_path && susfs_is_inode_sus_path(dentry->d_inode)) {
+		if (d_in_lookup(dentry))
+			d_lookup_done(dentry);
+		if (!(flags & LOOKUP_RCU))
+			dput(dentry);
+		dentry = d_alloc(base, &susfs_fake_qstr_name);
+		found_sus_path = true;
+		goto retry;
+	}
 	#endif
+	return lookup_real(base->d_inode, dentry, flags);
 }
 
 static int lookup_fast(struct nameidata *nd,
